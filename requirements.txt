@@ -1,0 +1,6 @@
+streamlit
+streamlit-plotly-events
+plotly
+shapely
+svgpathtools
+geopandas
