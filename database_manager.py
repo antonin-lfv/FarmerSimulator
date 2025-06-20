@@ -1676,14 +1676,308 @@ def sell_item(db_path: str, wallet_id: int, item_id: int, quantity: int) -> bool
 # ==== ADMIN
 
 
-def add_10k_usd(db_path: str):
-    conn = connect_db(db_path)
-    cursor = conn.cursor()
-    cursor.execute(
-        """
-        UPDATE wallet
-        SET balance_usd = balance_usd + 10000;
+
+# ==== TIME MANAGEMENT AND ONGOING ACTIONS SYSTEM ====
+
+import time
+import threading
+
+def get_game_time():
     """
-    )
-    conn.commit()
-    conn.close()
+    Retourne le temps de jeu actuel.
+    1 minute réelle = 1 heure de jeu (ratio 1:60)
+    """
+    return time.time()
+
+def minutes_to_game_hours(minutes):
+    """
+    Convertit les minutes réelles en heures de jeu.
+    1 minute réelle = 1 heure de jeu
+    """
+    return minutes
+
+def game_hours_to_minutes(game_hours):
+    """
+    Convertit les heures de jeu en minutes réelles.
+    """
+    return game_hours
+
+def check_vehicle_availability(db_path: str, item_id: int) -> bool:
+    """
+    Vérifie si un véhicule est disponible (pas utilisé dans une action en cours).
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Vérifier si le véhicule est utilisé dans une action en cours
+        cursor.execute("""
+            SELECT COUNT(*) FROM used_vehicles uv
+            JOIN ongoing_actions oa ON uv.ongoing_action_id = oa.ongoing_action_id
+            WHERE uv.item_id = ? AND oa.end_time > ?
+        """, (item_id, current_time))
+        
+        count = cursor.fetchone()[0]
+        return count == 0
+    except Error as e:
+        print(f"Erreur lors de la vérification de disponibilité du véhicule: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_available_workers(db_path: str) -> List[Dict[str, Any]]:
+    """
+    Retourne la liste des ouvriers disponibles.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return []
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Récupérer les ouvriers qui ne sont pas dans une action en cours
+        cursor.execute("""
+            SELECT w.worker_id, w.worker_name, w.worker_price, w.available
+            FROM workers w
+            WHERE w.available = 1 
+            AND w.worker_id NOT IN (
+                SELECT oa.worker_id FROM ongoing_actions oa 
+                WHERE oa.end_time > ?
+            )
+        """, (current_time,))
+        
+        workers = []
+        for row in cursor.fetchall():
+            workers.append({
+                "worker_id": row[0],
+                "worker_name": row[1],
+                "worker_price": row[2],
+                "available": row[3]
+            })
+        return workers
+    except Error as e:
+        print(f"Erreur lors de la récupération des ouvriers disponibles: {e}")
+        return []
+    finally:
+        conn.close()
+
+def start_action_with_time(
+    db_path: str,
+    parcel_id: int,
+    action: Dict[str, Any],
+    selected_requirements: Dict[str, Dict[str, Any]],
+    worker_id: int
+) -> bool:
+    """
+    Démarre une action avec gestion du temps et des ressources.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Récupérer la superficie de la parcelle
+        cursor.execute("SELECT superficie FROM parcels WHERE parcel_id = ?", (parcel_id,))
+        superficie = cursor.fetchone()[0]
+        
+        # Calculer la durée totale de l'action
+        action_time_hours = action["action_time"] * superficie
+        
+        # Récupérer le prix de l'ouvrier
+        cursor.execute("SELECT worker_price FROM workers WHERE worker_id = ?", (worker_id,))
+        worker_price = cursor.fetchone()[0]
+        
+        # Calculer le coût total
+        total_cost = worker_price * action_time_hours
+        
+        # Vérifier que l'utilisateur a assez d'argent
+        current_balance = get_wallet_balance(db_path)
+        if current_balance < total_cost:
+            return False
+        
+        # Vérifier la disponibilité des véhicules
+        vehicles_to_use = []
+        for subcategory, req in selected_requirements.items():
+            if req['category'] in ['vehicules', 'accessoires']:
+                if not check_vehicle_availability(db_path, req['item_id']):
+                    return False
+                if req['category'] == 'vehicules':
+                    vehicles_to_use.append(req['item_id'])
+        
+        # Calculer les temps
+        start_time = get_game_time()
+        end_time = start_time + game_hours_to_minutes(action_time_hours) * 60  # Convertir en secondes
+        
+        # Déduire le coût du wallet
+        cursor.execute("""
+            UPDATE wallet SET balance_usd = balance_usd - ? WHERE wallet_id = 1
+        """, (total_cost,))
+        
+        # Consommer les ressources nécessaires (packs seulement)
+        for subcategory, selected_item in selected_requirements.items():
+            if selected_item['category'] == 'packs':
+                item_id = selected_item["item_id"]
+                amount_required = selected_item["amount"]
+                
+                cursor.execute("""
+                    UPDATE packs SET amount = amount - ? WHERE item_id = ?
+                """, (amount_required, item_id))
+        
+        # Créer l'action en cours
+        cursor.execute("""
+            INSERT INTO ongoing_actions 
+            (parcel_id, action_type, worker_id, start_time, end_time, resources_used, cost)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        """, (parcel_id, action['action_type'], worker_id, start_time, end_time, 
+              json.dumps(selected_requirements), total_cost))
+        
+        ongoing_action_id = cursor.lastrowid
+        
+        # Marquer les véhicules comme utilisés
+        for vehicle_id in vehicles_to_use:
+            cursor.execute("""
+                INSERT INTO used_vehicles (item_id, ongoing_action_id)
+                VALUES (?, ?)
+            """, (vehicle_id, ongoing_action_id))
+        
+        conn.commit()
+        return True
+        
+    except Error as e:
+        print(f"Erreur lors du démarrage de l'action: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+def get_ongoing_actions(db_path: str) -> List[Dict[str, Any]]:
+    """
+    Retourne toutes les actions en cours avec leur progression.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return []
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        cursor.execute("""
+            SELECT oa.ongoing_action_id, oa.parcel_id, oa.action_type, 
+                   w.worker_name, oa.start_time, oa.end_time, oa.cost,
+                   p.superficie
+            FROM ongoing_actions oa
+            JOIN workers w ON oa.worker_id = w.worker_id
+            JOIN parcels p ON oa.parcel_id = p.parcel_id
+            WHERE oa.end_time > ?
+            ORDER BY oa.end_time ASC
+        """, (current_time,))
+        
+        actions = []
+        for row in cursor.fetchall():
+            ongoing_id, parcel_id, action_type, worker_name, start_time, end_time, cost, superficie = row
+            
+            # Calculer la progression
+            total_duration = end_time - start_time
+            elapsed = current_time - start_time
+            progress = min(100, max(0, (elapsed / total_duration) * 100))
+            
+            # Temps restant en minutes
+            remaining_seconds = max(0, end_time - current_time)
+            remaining_minutes = remaining_seconds / 60
+            
+            actions.append({
+                "ongoing_action_id": ongoing_id,
+                "parcel_id": parcel_id,
+                "action_type": action_type,
+                "worker_name": worker_name,
+                "progress": progress,
+                "remaining_minutes": remaining_minutes,
+                "cost": cost,
+                "superficie": superficie
+            })
+        
+        return actions
+    except Error as e:
+        print(f"Erreur lors de la récupération des actions en cours: {e}")
+        return []
+    finally:
+        conn.close()
+
+def complete_finished_actions(db_path: str):
+    """
+    Complète automatiquement les actions terminées.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Récupérer les actions terminées
+        cursor.execute("""
+            SELECT oa.ongoing_action_id, oa.parcel_id, oa.action_type, oa.resources_used
+            FROM ongoing_actions oa
+            WHERE oa.end_time <= ?
+        """, (current_time,))
+        
+        finished_actions = cursor.fetchall()
+        
+        for action in finished_actions:
+            ongoing_id, parcel_id, action_type, resources_used_json = action
+            resources_used = json.loads(resources_used_json)
+            
+            # Ajouter des récompenses si c'est une récolte
+            if "récolter" in action_type.lower():
+                cursor.execute("SELECT superficie FROM parcels WHERE parcel_id = ?", (parcel_id,))
+                superficie = cursor.fetchone()[0]
+                
+                # Générer des packs aléatoirement
+                for subcategory, selected_item in resources_used.items():
+                    if selected_item['category'].lower() == 'packs':
+                        packs_per_hectare = random.randint(2, 5)
+                        total_packs = packs_per_hectare * superficie
+                        
+                        item_id = selected_item["item_id"]
+                        
+                        cursor.execute("""
+                            UPDATE packs SET amount = amount + ? WHERE item_id = ?
+                        """, (total_packs, item_id))
+            
+            # Mettre à jour l'état de la parcelle
+            # Récupérer la prochaine action depuis la table actions
+            cursor.execute("""
+                SELECT next_action FROM actions 
+                WHERE action_type = ? AND type_surface_id = (
+                    SELECT type_surface_id FROM parcels WHERE parcel_id = ?
+                )
+            """, (action_type, parcel_id))
+            
+            next_action_row = cursor.fetchone()
+            if next_action_row:
+                next_action = next_action_row[0]
+                cursor.execute("""
+                    UPDATE parcels SET parcel_next_action = ? WHERE parcel_id = ?
+                """, (next_action, parcel_id))
+            
+            # Supprimer l'action terminée et libérer les véhicules
+            cursor.execute("DELETE FROM used_vehicles WHERE ongoing_action_id = ?", (ongoing_id,))
+            cursor.execute("DELETE FROM ongoing_actions WHERE ongoing_action_id = ?", (ongoing_id,))
+        
+        conn.commit()
+        
+    except Error as e:
+        print(f"Erreur lors de la completion des actions terminées: {e}")
+        conn.rollback()
+    finally:
+        conn.close()
