@@ -1399,7 +1399,7 @@ def sell_harvest(db_path: str, subcategory: str, quantity: int) -> bool:
 def automatic_market_update(db_path: str):
     """
     Système de mise à jour automatique intelligent du marché.
-    Met à jour les prix selon différents intervalles et logiques.
+    Met à jour les prix une fois par jour de jeu (24 minutes réelles).
     """
     conn = connect_db(db_path)
     if conn is None:
@@ -1423,14 +1423,17 @@ def automatic_market_update(db_path: str):
         last_update = last_update_row[0]
         time_since_update = current_time - last_update
         
-        # Mise à jour des prix toutes les 2 minutes (120 secondes)
-        # Équivaut à 2 heures de jeu (120 minutes de jeu)
-        if time_since_update > 120:
+        # Mise à jour des prix une fois par jour de jeu (24 heures de jeu = 24 minutes réelles = 1440 secondes)
+        day_in_seconds = 24 * 60  # 24 minutes en secondes
+        
+        if time_since_update > day_in_seconds:
             update_market_prices(db_path)
             
-            # Événements spéciaux occasionnels (5% de chance)
-            if random.random() < 0.05:
+            # Événements spéciaux occasionnels (10% de chance par jour)
+            if random.random() < 0.10:
                 create_market_event(db_path)
+                
+            print(f"Mise à jour quotidienne du marché effectuée")
     
     except Error as e:
         print(f"Erreur lors de la mise à jour automatique du marché: {e}")
