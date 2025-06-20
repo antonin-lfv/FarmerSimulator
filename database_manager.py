@@ -2717,13 +2717,11 @@ def complete_finished_actions(db_path: str):
                         
                         print(f"Récolte terminée: +{total_packs} {reward_subcategory}")
             
-            # Mettre à jour l'état de la parcelle
-            # Récupérer la prochaine action depuis la table actions
+            # **CORRECTION MAJEURE** : Mettre à jour l'état de la parcelle selon la logique des actions
             cursor.execute("""
-                SELECT next_action FROM actions 
-                WHERE action_type = ? AND type_surface_id = (
-                    SELECT type_surface_id FROM parcels WHERE parcel_id = ?
-                )
+                SELECT a.next_action FROM actions a
+                JOIN parcels p ON p.type_surface_id = a.type_surface_id
+                WHERE a.action_type = ? AND p.parcel_id = ?
             """, (action_type, parcel_id))
             
             next_action_row = cursor.fetchone()
