@@ -1135,8 +1135,7 @@ def init_market_prices(db_path: str):
 
 def update_market_prices(db_path: str):
     """
-    Met à jour les prix du marché avec des fluctuations aléatoires.
-    Appelé périodiquement pour simuler les variations de marché.
+    Met à jour les prix du marché avec des fluctuations réalistes basées sur l'offre et la demande.
     """
     conn = connect_db(db_path)
     if conn is None:
@@ -1159,16 +1158,54 @@ def update_market_prices(db_path: str):
         
         current_prices = cursor.fetchall()
         
+        # Facteurs d'influence sur les prix
+        seasonal_factor = 1.0 + 0.1 * random.uniform(-1, 1)  # Facteur saisonnier ±10%
+        weather_factor = 1.0 + 0.05 * random.uniform(-1, 1)  # Facteur météo ±5%
+        
         for category, subcategory, current_price in current_prices:
-            # Variation aléatoire entre -10% et +10%
-            variation = random.uniform(-0.1, 0.1)
+            # Calcul de la variation basée sur plusieurs facteurs
+            base_variation = random.uniform(-0.08, 0.08)  # Variation de base ±8%
+            
+            # Facteurs spéciaux selon la catégorie
+            if category == "packs":  # Graines et matériaux
+                # Les graines ont tendance à être plus stables
+                variation = base_variation * 0.6 + (seasonal_factor - 1) * 0.3
+                # Limites pour les graines : 10-120 USD
+                min_price, max_price = 10.0, 120.0
+                
+            elif category == "harvest":  # Récoltes
+                # Les récoltes sont plus volatiles
+                demand_factor = random.uniform(0.9, 1.15)  # Facteur de demande
+                variation = base_variation * 1.5 + (weather_factor - 1) * 0.8 + (demand_factor - 1) * 0.5
+                
+                # Limites selon le type de récolte
+                if subcategory in ["céréales", "patates"]:
+                    min_price, max_price = 25.0, 150.0
+                elif subcategory in ["coton", "bois"]:
+                    min_price, max_price = 35.0, 180.0
+                elif subcategory in ["raisins"]:
+                    min_price, max_price = 50.0, 250.0
+                else:
+                    min_price, max_price = 30.0, 200.0
+            
+            # Appliquer la variation
             new_price = current_price * (1 + variation)
             
-            # Éviter les prix trop bas ou trop hauts
+            # Appliquer les limites
+            new_price = max(min_price, min(new_price, max_price))
+            
+            # Ajouter une tendance à revenir vers la moyenne (mean reversion)
             if category == "packs":
-                new_price = max(10.0, min(new_price, 100.0))
-            elif category == "harvest":
-                new_price = max(20.0, min(new_price, 200.0))
+                target_price = 40.0  # Prix moyen cible pour les graines
+            else:
+                target_price = 80.0  # Prix moyen cible pour les récoltes
+            
+            if abs(current_price - target_price) > target_price * 0.3:  # Si trop loin de la moyenne
+                mean_reversion = (target_price - current_price) * 0.1  # 10% de retour vers la moyenne
+                new_price = current_price + mean_reversion
+            
+            # Arrondir à 2 décimales
+            new_price = round(new_price, 2)
             
             # Ajouter le nouveau prix
             cursor.execute("""
