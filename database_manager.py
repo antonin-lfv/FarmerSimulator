@@ -1104,6 +1104,243 @@ def get_all_workers_status(db_path: str) -> List[Dict[str, Any]]:
         conn.close()
 
 
+# ==== MARKET PRICES SYSTEM ====
+
+def init_market_prices(db_path: str):
+    """
+    Initialise les prix du marché pour les différentes catégories de produits.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Prix initiaux pour différentes catégories
+        initial_prices = [
+            ("packs", "graines céréales", 25.0),
+            ("packs", "graines coton", 30.0),
+            ("packs", "graines patates", 28.0),
+            ("packs", "graines raisins", 35.0),
+            ("packs", "pousses arbres", 40.0),
+            ("packs", "engrais", 15.0),
+            # Prix de vente des récoltes
+            ("harvest", "céréales", 50.0),
+            ("harvest", "coton", 60.0),
+            ("harvest", "patates", 45.0),
+            ("harvest", "raisins", 80.0),
+            ("harvest", "bois", 70.0),
+        ]
+        
+        for category, subcategory, price in initial_prices:
+            # Vérifier si le prix existe déjà
+            cursor.execute("""
+                SELECT COUNT(*) FROM market_prices 
+                WHERE item_category = ? AND item_subcategory = ?
+            """, (category, subcategory))
+            
+            if cursor.fetchone()[0] == 0:
+                cursor.execute("""
+                    INSERT INTO market_prices (item_category, item_subcategory, price, timestamp)
+                    VALUES (?, ?, ?, ?)
+                """, (category, subcategory, price, current_time))
+        
+        conn.commit()
+        
+    except Error as e:
+        print(f"Erreur lors de l'initialisation des prix du marché: {e}")
+    finally:
+        conn.close()
+
+def update_market_prices(db_path: str):
+    """
+    Met à jour les prix du marché avec des fluctuations aléatoires.
+    Appelé périodiquement pour simuler les variations de marché.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Récupérer les derniers prix
+        cursor.execute("""
+            SELECT DISTINCT item_category, item_subcategory, price
+            FROM market_prices mp1
+            WHERE timestamp = (
+                SELECT MAX(timestamp) FROM market_prices mp2
+                WHERE mp2.item_category = mp1.item_category 
+                AND mp2.item_subcategory = mp1.item_subcategory
+            )
+        """)
+        
+        current_prices = cursor.fetchall()
+        
+        for category, subcategory, current_price in current_prices:
+            # Variation aléatoire entre -10% et +10%
+            variation = random.uniform(-0.1, 0.1)
+            new_price = current_price * (1 + variation)
+            
+            # Éviter les prix trop bas ou trop hauts
+            if category == "packs":
+                new_price = max(10.0, min(new_price, 100.0))
+            elif category == "harvest":
+                new_price = max(20.0, min(new_price, 200.0))
+            
+            # Ajouter le nouveau prix
+            cursor.execute("""
+                INSERT INTO market_prices (item_category, item_subcategory, price, timestamp)
+                VALUES (?, ?, ?, ?)
+            """, (category, subcategory, new_price, current_time))
+        
+        conn.commit()
+        
+    except Error as e:
+        print(f"Erreur lors de la mise à jour des prix du marché: {e}")
+    finally:
+        conn.close()
+
+def get_current_market_prices(db_path: str) -> List[Dict[str, Any]]:
+    """
+    Retourne les prix actuels du marché.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return []
+    
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT mp1.item_category, mp1.item_subcategory, mp1.price, mp1.timestamp
+            FROM market_prices mp1
+            WHERE mp1.timestamp = (
+                SELECT MAX(timestamp) FROM market_prices mp2
+                WHERE mp2.item_category = mp1.item_category 
+                AND mp2.item_subcategory = mp1.item_subcategory
+            )
+            ORDER BY mp1.item_category, mp1.item_subcategory
+        """)
+        
+        prices = []
+        for row in cursor.fetchall():
+            prices.append({
+                "category": row[0],
+                "subcategory": row[1],
+                "price": row[2],
+                "timestamp": row[3]
+            })
+        
+        return prices
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération des prix du marché: {e}")
+        return []
+    finally:
+        conn.close()
+
+def get_price_history(db_path: str, category: str, subcategory: str, limit: int = 100) -> List[Dict[str, Any]]:
+    """
+    Retourne l'historique des prix pour une catégorie/sous-catégorie donnée.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return []
+    
+    try:
+        cursor = conn.cursor()
+        
+        cursor.execute("""
+            SELECT price, timestamp FROM market_prices
+            WHERE item_category = ? AND item_subcategory = ?
+            ORDER BY timestamp DESC
+            LIMIT ?
+        """, (category, subcategory, limit))
+        
+        history = []
+        for row in cursor.fetchall():
+            history.append({
+                "price": row[0],
+                "timestamp": row[1]
+            })
+        
+        return history
+        
+    except Error as e:
+        print(f"Erreur lors de la récupération de l'historique des prix: {e}")
+        return []
+    finally:
+        conn.close()
+
+def sell_harvest(db_path: str, subcategory: str, quantity: int) -> bool:
+    """
+    Vend une récolte au prix du marché actuel.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        
+        # Récupérer le prix actuel
+        cursor.execute("""
+            SELECT price FROM market_prices 
+            WHERE item_category = 'harvest' AND item_subcategory = ?
+            ORDER BY timestamp DESC LIMIT 1
+        """, (subcategory,))
+        
+        price_row = cursor.fetchone()
+        if not price_row:
+            return False
+        
+        market_price = price_row[0]
+        total_value = market_price * quantity
+        
+        # Trouver l'item_id correspondant dans le catalogue
+        cursor.execute("""
+            SELECT item_id FROM catalog 
+            WHERE subcategory LIKE ? AND category = 'packs'
+        """, (f"%{subcategory}%",))
+        
+        item_row = cursor.fetchone()
+        if not item_row:
+            return False
+        
+        item_id = item_row[0]
+        
+        # Vérifier que l'utilisateur a assez de cette récolte
+        cursor.execute("SELECT amount FROM packs WHERE item_id = ?", (item_id,))
+        owned_row = cursor.fetchone()
+        
+        if not owned_row or owned_row[0] < quantity:
+            return False
+        
+        # Effectuer la vente
+        cursor.execute("""
+            UPDATE packs SET amount = amount - ? WHERE item_id = ?
+        """, (quantity, item_id))
+        
+        cursor.execute("""
+            UPDATE wallet SET balance_usd = balance_usd + ? WHERE wallet_id = 1
+        """, (total_value,))
+        
+        conn.commit()
+        return True
+        
+    except Error as e:
+        print(f"Erreur lors de la vente de récolte: {e}")
+        conn.rollback()
+        return False
+    finally:
+        conn.close()
+
+
+# ==== ADMIN FUNCTIONS ====
 # ==== ADMIN FUNCTIONS ====
 
 def add_10k_usd(db_path: str):
