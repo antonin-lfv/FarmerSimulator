@@ -1104,9 +1104,9 @@ def get_all_workers_status(db_path: str) -> List[Dict[str, Any]]:
         conn.close()
 
 
-    """
-    Initialise les prix du marché pour les différentes catégories de produits.
-    """
+# ==== MARKET PRICES SYSTEM ====
+
+def init_market_prices(db_path: str):
     conn = connect_db(db_path)
     if conn is None:
         return
