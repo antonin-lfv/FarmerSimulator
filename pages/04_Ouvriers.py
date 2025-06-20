@@ -75,19 +75,15 @@ with col2:
     
     # Section embauche
     with st.expander("➕ Embaucher un ouvrier", expanded=False):
-        with st.form("hire_worker_form"):
-            worker_name = st.text_input("Nom de l'ouvrier:", placeholder="ex: Jean Dupont")
-            worker_price = st.number_input("Prix horaire (USD):", min_value=10.0, max_value=200.0, value=50.0, step=5.0)
-            
-            if st.form_submit_button("Embaucher"):
-                if worker_name.strip():
-                    if hire_worker(PATH_config.db_path, worker_name, worker_price):
-                        st.success(f"Ouvrier {worker_name} embauché avec succès!")
-                        st.rerun()
-                    else:
-                        st.error("Erreur lors de l'embauche.")
-                else:
-                    st.error("Veuillez entrer un nom pour l'ouvrier.")
+        st.write("**Embauche d'un nouvel ouvrier**")
+        st.write("Le nom et le salaire horaire seront générés automatiquement selon les standards du marché local.")
+        
+        if st.button("🤝 Embaucher un ouvrier", type="primary"):
+            if hire_worker(PATH_config.db_path):
+                st.success("✅ Nouvel ouvrier embauché avec succès !")
+                st.rerun()
+            else:
+                st.error("❌ Erreur lors de l'embauche.")
     
     st.write("### 👷 Liste des Ouvriers")
     
