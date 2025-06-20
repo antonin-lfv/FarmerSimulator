@@ -117,18 +117,18 @@ with tab1:
                             key=f"accept_{contract['contract_id']}",
                             type=button_type
                         ):
-                            success = accept_contract(
+                            result = accept_contract(
                                 PATH_config.db_path,
                                 contract['contract_id'],
                                 selected_worker['worker_id']
                             )
                             
-                            if success:
-                                st.success(f"✅ Contrat accepté ! {selected_worker['worker_name']} est maintenant en mission.")
+                            if result["success"]:
+                                st.success(f"✅ {result['message']}")
                                 st.balloons()
                                 st.rerun()
                             else:
-                                st.error("❌ Impossible d'accepter le contrat. Vérifiez votre solde.")
+                                st.error(f"❌ {result['message']}")
                     else:
                         st.write("Aucun ouvrier disponible")
                 
