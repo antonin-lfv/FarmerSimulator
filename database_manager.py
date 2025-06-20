@@ -2739,7 +2739,9 @@ def complete_finished_actions(db_path: str):
         
     except Error as e:
         print(f"Erreur lors de la completion des actions terminées: {e}")
-# ==== WORKER MANAGEMENT SYSTEM ====
+        conn.rollback()
+    finally:
+        conn.close()
 
 def hire_worker(db_path: str, worker_name: str = None, worker_price: float = None) -> bool:
     """
