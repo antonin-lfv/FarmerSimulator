@@ -2376,9 +2376,9 @@ def game_hours_to_minutes(game_hours):
     """
     return game_hours
 
-def check_vehicle_availability(db_path: str, item_id: int) -> bool:
+def check_vehicle_availability(db_path: str, item_id: int, quantity_needed: int = 1) -> bool:
     """
-    Vérifie si un véhicule est disponible (pas utilisé dans une action en cours).
+    Vérifie si suffisamment de véhicules de ce type sont disponibles.
     """
     conn = connect_db(db_path)
     if conn is None:
@@ -2388,18 +2388,69 @@ def check_vehicle_availability(db_path: str, item_id: int) -> bool:
         cursor = conn.cursor()
         current_time = get_game_time()
         
-        # Vérifier si le véhicule est utilisé dans une action en cours
+        # Récupérer le nombre total de véhicules de ce type possédés
+        cursor.execute("""
+            SELECT amount FROM vehicules WHERE item_id = ?
+        """, (item_id,))
+        owned_row = cursor.fetchone()
+        
+        if not owned_row:
+            return False
+        
+        total_owned = owned_row[0]
+        
+        # Vérifier combien sont actuellement utilisés
         cursor.execute("""
             SELECT COUNT(*) FROM used_vehicles uv
             JOIN ongoing_actions oa ON uv.ongoing_action_id = oa.ongoing_action_id
             WHERE uv.item_id = ? AND oa.end_time > ?
         """, (item_id, current_time))
         
-        count = cursor.fetchone()[0]
-        return count == 0
+        currently_used = cursor.fetchone()[0]
+        available = total_owned - currently_used
+        
+        return available >= quantity_needed
+        
     except Error as e:
         print(f"Erreur lors de la vérification de disponibilité du véhicule: {e}")
         return False
+    finally:
+        conn.close()
+
+def get_available_vehicle_count(db_path: str, item_id: int) -> int:
+    """
+    Retourne le nombre de véhicules disponibles de ce type.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return 0
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Récupérer le nombre total possédé
+        cursor.execute("SELECT amount FROM vehicules WHERE item_id = ?", (item_id,))
+        owned_row = cursor.fetchone()
+        
+        if not owned_row:
+            return 0
+        
+        total_owned = owned_row[0]
+        
+        # Compter ceux utilisés
+        cursor.execute("""
+            SELECT COUNT(*) FROM used_vehicles uv
+            JOIN ongoing_actions oa ON uv.ongoing_action_id = oa.ongoing_action_id
+            WHERE uv.item_id = ? AND oa.end_time > ?
+        """, (item_id, current_time))
+        
+        currently_used = cursor.fetchone()[0]
+        return max(0, total_owned - currently_used)
+        
+    except Error as e:
+        print(f"Erreur lors du comptage des véhicules disponibles: {e}")
+        return 0
     finally:
         conn.close()
 
