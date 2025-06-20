@@ -1518,13 +1518,13 @@ def get_available_contracts(db_path: str) -> List[Dict[str, Any]]:
     finally:
         conn.close()
 
-def accept_contract(db_path: str, contract_id: int, worker_id: int) -> bool:
+def accept_contract(db_path: str, contract_id: int, worker_id: int) -> Dict[str, Any]:
     """
-    Accepte un contrat et assigne un ouvrier.
+    Accepte un contrat après vérification des prérequis.
     """
     conn = connect_db(db_path)
     if conn is None:
-        return False
+        return {"success": False, "message": "Erreur de connexion à la base de données"}
     
     try:
         cursor = conn.cursor()
@@ -1536,10 +1536,34 @@ def accept_contract(db_path: str, contract_id: int, worker_id: int) -> bool:
         
         contract_row = cursor.fetchone()
         if not contract_row:
-            return False
+            return {"success": False, "message": "Contrat introuvable"}
         
         description, reward, requirements_json = contract_row
         requirements = json.loads(requirements_json) if requirements_json else {}
+        
+        # Vérifier les prérequis du contrat s'il y en a
+        if requirements:
+            action_type = requirements.get("action_type")
+            parcel_id = requirements.get("parcel_id")
+            
+            if action_type and parcel_id:
+                # Vérifier que la parcelle est achetée
+                cursor.execute("""
+                    SELECT is_purchased, parcel_next_action FROM parcels WHERE parcel_id = ?
+                """, (parcel_id,))
+                
+                parcel_row = cursor.fetchone()
+                if not parcel_row:
+                    return {"success": False, "message": f"Parcelle {parcel_id} introuvable"}
+                
+                is_purchased, next_action = parcel_row
+                
+                if not is_purchased:
+                    return {"success": False, "message": f"Vous devez d'abord acheter la parcelle {parcel_id}"}
+                
+                # Vérifier que l'action demandée correspond à l'état actuel de la parcelle
+                if next_action != action_type:
+                    return {"success": False, "message": f"Action impossible: la parcelle {parcel_id} nécessite '{next_action}', pas '{action_type}'"}
         
         # Simuler une durée de contrat (entre 2 et 6 heures de jeu)
         contract_duration_hours = random.uniform(2.0, 6.0)
@@ -1550,7 +1574,7 @@ def accept_contract(db_path: str, contract_id: int, worker_id: int) -> bool:
         cursor.execute("SELECT worker_price FROM workers WHERE worker_id = ?", (worker_id,))
         worker_price_row = cursor.fetchone()
         if not worker_price_row:
-            return False
+            return {"success": False, "message": "Ouvrier introuvable"}
         
         worker_price = worker_price_row[0]
         contract_cost = worker_price * contract_duration_hours
@@ -1558,7 +1582,7 @@ def accept_contract(db_path: str, contract_id: int, worker_id: int) -> bool:
         # Vérifier que l'utilisateur peut payer
         current_balance = get_wallet_balance(db_path)
         if current_balance < contract_cost:
-            return False
+            return {"success": False, "message": f"Fonds insuffisants (requis: ${contract_cost:.2f}, disponible: ${current_balance:.2f})"}
         
         # Déduire le coût du wallet
         cursor.execute("""
@@ -1573,17 +1597,24 @@ def accept_contract(db_path: str, contract_id: int, worker_id: int) -> bool:
         """, (-1, f"Contrat: {description}", worker_id, start_time, end_time, 
               json.dumps({}), contract_cost))
         
-        # Marquer que ce contrat est en cours en supprimant ou marquant le contrat
-        # Pour simplifier, on le supprime (on pourrait ajouter un statut)
+        ongoing_action_id = cursor.lastrowid
+        
+        # Si le contrat concerne une action spécifique sur une parcelle, programmer l'action
+        if requirements and requirements.get("parcel_id") and requirements.get("action_type"):
+            # Au lieu de supprimer le contrat, on le marque comme "en cours"
+            # Pour simplifier, on le supprime quand même mais on pourrait ajouter un statut
+            pass
+        
+        # Marquer le contrat comme accepté (le supprimer pour simplifier)
         cursor.execute("DELETE FROM contracts WHERE contract_id = ?", (contract_id,))
         
         conn.commit()
-        return True
+        return {"success": True, "message": f"Contrat accepté! Durée: {contract_duration_hours:.1f}h, Coût: ${contract_cost:.2f}"}
         
     except Error as e:
         print(f"Erreur lors de l'acceptation du contrat: {e}")
         conn.rollback()
-        return False
+        return {"success": False, "message": f"Erreur lors de l'acceptation: {e}"}
     finally:
         conn.close()
 
