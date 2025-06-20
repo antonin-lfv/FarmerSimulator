@@ -7,7 +7,6 @@ from PIL import Image
 from typing import List, Dict, Optional
 import numpy as np
 from config import PATH_config, CSS
-from database_manager import *
 from logo import add_logo
 import streamlit as st
 from database_manager import (
