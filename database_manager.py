@@ -763,15 +763,30 @@ def populate_db(db_path: str):
         cursor.execute("SELECT COUNT(*) FROM workers;")
         workers_count = cursor.fetchone()[0]
         if workers_count == 0:
-            # Embaucher 5 ouvriers initiaux
+            # Listes de noms pour générer les ouvriers initiaux
+            first_names = [
+                "Jean", "Pierre", "Michel", "André", "Philippe", "Alain", "Bernard", "Robert",
+                "Jacques", "Louis", "François", "Daniel", "Henri", "Claude", "Marcel", "Paul",
+                "Marie", "Monique", "Françoise", "Nicole", "Martine", "Sylvie", "Catherine"
+            ]
+            
+            last_names = [
+                "Martin", "Bernard", "Dubois", "Thomas", "Robert", "Petit", "Durand", "Leroy",
+                "Moreau", "Simon", "Laurent", "Lefebvre", "Michel", "Garcia", "David", "Bertrand",
+                "Roux", "Vincent", "Fournier", "Morel", "Girard", "André", "Lefèvre", "Mercier"
+            ]
+            
+            # Créer 5 ouvriers avec noms et prix aléatoires
             for _ in range(5):
-                # Utiliser la fonction hire_worker pour générer automatiquement
-                from database_manager import hire_worker
-                hire_worker(db_path)
+                worker_name = f"{random.choice(first_names)} {random.choice(last_names)}"
+                worker_price = random.uniform(30.0, 80.0)
+                
+                cursor.execute("""
+                    INSERT INTO workers (worker_name, worker_price, available)
+                    VALUES (?, ?, 1)
+                """, (worker_name, worker_price))
+            
             print("5 ouvriers initiaux embauchés avec succès.")
-        
-        # Ne pas ajouter les ouvriers supplémentaires manuellement
-        # car ils sont maintenant générés automatiquement
 
         # Commit des changements et fermeture de la connexion
         conn.commit()
