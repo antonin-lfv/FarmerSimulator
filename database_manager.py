@@ -1004,27 +1004,6 @@ def perform_action(
 
 # ==== WORKER MANAGEMENT SYSTEM ====
 
-def hire_worker(db_path: str, worker_name: str, worker_price: float = 50.0) -> bool:
-    """
-    Embauche un nouvel ouvrier.
-    """
-    conn = connect_db(db_path)
-    if conn is None:
-        return False
-    
-    try:
-        cursor = conn.cursor()
-        cursor.execute("""
-            INSERT INTO workers (worker_name, worker_price, available)
-            VALUES (?, ?, 1)
-        """, (worker_name, worker_price))
-        conn.commit()
-        return True
-    except Error as e:
-        print(f"Erreur lors de l'embauche: {e}")
-        return False
-    finally:
-        conn.close()
 
 def fire_worker(db_path: str, worker_id: int) -> bool:
     """
