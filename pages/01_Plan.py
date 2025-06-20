@@ -326,14 +326,18 @@ def display_manager(parcelle: int):
                         # Vérifier la disponibilité des véhicules si nécessaire
                         if any(item['category'] == 'vehicules' for item in items):
                             # Afficher un avertissement si certains véhicules sont occupés
-                            from database_manager import check_vehicle_availability
+                            from database_manager import get_available_vehicle_count
                             available_items = []
                             for item in items:
                                 if item['category'] == 'vehicules':
-                                    if check_vehicle_availability(PATH_config.db_path, item['item_id']):
-                                        available_items.append(item)
+                                    available_count = get_available_vehicle_count(PATH_config.db_path, item['item_id'])
+                                    if available_count > 0:
+                                        # Mettre à jour le texte pour montrer les disponibles
+                                        item_copy = item.copy()
+                                        item_copy['amount'] = available_count
+                                        available_items.append(item_copy)
                                     else:
-                                        st.warning(f"🚫 {item['name']} est actuellement utilisé dans une autre action.")
+                                        st.warning(f"🚫 Tous les {item['name']} sont actuellement utilisés.")
                                 else:
                                     available_items.append(item)
                             items = available_items
