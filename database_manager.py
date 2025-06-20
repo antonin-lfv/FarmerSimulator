@@ -1372,6 +1372,111 @@ def sell_harvest(db_path: str, subcategory: str, quantity: int) -> bool:
         conn.close()
 
 
+def automatic_market_update(db_path: str):
+    """
+    Système de mise à jour automatique intelligent du marché.
+    Met à jour les prix selon différents intervalles et logiques.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Vérifier s'il faut mettre à jour les prix
+        cursor.execute("""
+            SELECT MAX(timestamp) FROM market_prices
+        """)
+        last_update_row = cursor.fetchone()
+        
+        if last_update_row[0] is None:
+            # Première initialisation
+            init_market_prices(db_path)
+            return
+        
+        last_update = last_update_row[0]
+        time_since_update = current_time - last_update
+        
+        # Mise à jour des prix toutes les 2 minutes (120 secondes)
+        # Équivaut à 2 heures de jeu (120 minutes de jeu)
+        if time_since_update > 120:
+            update_market_prices(db_path)
+            
+            # Événements spéciaux occasionnels (5% de chance)
+            if random.random() < 0.05:
+                create_market_event(db_path)
+    
+    except Error as e:
+        print(f"Erreur lors de la mise à jour automatique du marché: {e}")
+    finally:
+        conn.close()
+
+def create_market_event(db_path: str):
+    """
+    Crée des événements spéciaux qui affectent les prix du marché.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        events = [
+            ("drought", "sécheresse", {"harvest": 1.3, "packs": 1.1}),  # Sécheresse = prix plus élevés
+            ("bumper_crop", "récolte exceptionnelle", {"harvest": 0.7, "packs": 0.9}),  # Bonne récolte = prix plus bas
+            ("export_demand", "forte demande export", {"harvest": 1.4, "packs": 1.0}),  # Export = récoltes plus chères
+            ("fuel_increase", "hausse carburant", {"harvest": 1.1, "packs": 1.2}),  # Carburant = tout plus cher
+            ("government_subsidy", "subventions", {"harvest": 0.9, "packs": 0.8}),  # Subventions = prix plus bas
+        ]
+        
+        event_type, event_name, price_multipliers = random.choice(events)
+        
+        # Appliquer l'événement sur les prix actuels
+        cursor.execute("""
+            SELECT DISTINCT item_category, item_subcategory, price
+            FROM market_prices mp1
+            WHERE timestamp = (
+                SELECT MAX(timestamp) FROM market_prices mp2
+                WHERE mp2.item_category = mp1.item_category 
+                AND mp2.item_subcategory = mp1.item_subcategory
+            )
+        """)
+        
+        current_prices = cursor.fetchall()
+        
+        for category, subcategory, current_price in current_prices:
+            if category in price_multipliers:
+                multiplier = price_multipliers[category]
+                # Ajouter un peu de randomisation (±20%)
+                multiplier *= random.uniform(0.8, 1.2)
+                new_price = current_price * multiplier
+                
+                # Appliquer les limites usuelles
+                if category == "packs":
+                    new_price = max(10.0, min(new_price, 120.0))
+                elif category == "harvest":
+                    new_price = max(25.0, min(new_price, 250.0))
+                
+                new_price = round(new_price, 2)
+                
+                cursor.execute("""
+                    INSERT INTO market_prices (item_category, item_subcategory, price, timestamp)
+                    VALUES (?, ?, ?, ?)
+                """, (category, subcategory, new_price, current_time))
+        
+        conn.commit()
+        print(f"Événement de marché: {event_name}")
+        
+    except Error as e:
+        print(f"Erreur lors de la création d'événement de marché: {e}")
+    finally:
+        conn.close()
+
+
 # ==== CONTRACTS SYSTEM ====
 
 def get_available_contracts(db_path: str) -> List[Dict[str, Any]]:
