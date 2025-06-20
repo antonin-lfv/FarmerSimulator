@@ -1341,7 +1341,6 @@ def sell_harvest(db_path: str, subcategory: str, quantity: int) -> bool:
 
 
 # ==== ADMIN FUNCTIONS ====
-# ==== ADMIN FUNCTIONS ====
 
 def add_10k_usd(db_path: str):
     conn = connect_db(db_path)
