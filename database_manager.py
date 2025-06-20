@@ -1978,6 +1978,118 @@ def complete_finished_actions(db_path: str):
         
     except Error as e:
         print(f"Erreur lors de la completion des actions terminées: {e}")
-        conn.rollback()
+# ==== WORKER MANAGEMENT SYSTEM ====
+
+def hire_worker(db_path: str, worker_name: str, worker_price: float = 50.0) -> bool:
+    """
+    Embauche un nouvel ouvrier.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        cursor.execute("""
+            INSERT INTO workers (worker_name, worker_price, available)
+            VALUES (?, ?, 1)
+        """, (worker_name, worker_price))
+        conn.commit()
+        return True
+    except Error as e:
+        print(f"Erreur lors de l'embauche: {e}")
+        return False
     finally:
         conn.close()
+
+def fire_worker(db_path: str, worker_id: int) -> bool:
+    """
+    Licencie un ouvrier (seulement s'il n'est pas en mission).
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return False
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        # Vérifier que l'ouvrier n'est pas en mission
+        cursor.execute("""
+            SELECT COUNT(*) FROM ongoing_actions 
+            WHERE worker_id = ? AND end_time > ?
+        """, (worker_id, current_time))
+        
+        if cursor.fetchone()[0] > 0:
+            return False  # Ouvrier occupé
+        
+        cursor.execute("DELETE FROM workers WHERE worker_id = ?", (worker_id,))
+        conn.commit()
+        return True
+    except Error as e:
+        print(f"Erreur lors du licenciement: {e}")
+        return False
+    finally:
+        conn.close()
+
+def get_all_workers_status(db_path: str) -> List[Dict[str, Any]]:
+    """
+    Retourne le statut de tous les ouvriers.
+    """
+    conn = connect_db(db_path)
+    if conn is None:
+        return []
+    
+    try:
+        cursor = conn.cursor()
+        current_time = get_game_time()
+        
+        cursor.execute("""
+            SELECT w.worker_id, w.worker_name, w.worker_price, w.available,
+                   oa.action_type, oa.parcel_id, oa.end_time
+            FROM workers w
+            LEFT JOIN ongoing_actions oa ON w.worker_id = oa.worker_id AND oa.end_time > ?
+            ORDER BY w.worker_name
+        """, (current_time,))
+        
+        workers = []
+        for row in cursor.fetchall():
+            worker_id, name, price, available, action_type, parcel_id, end_time = row
+            
+            status = "Disponible"
+            remaining_time = 0
+            
+            if action_type:
+                status = f"En mission: {action_type} (Parcelle {parcel_id})"
+                remaining_time = max(0, (end_time - current_time) / 60)  # en minutes
+            
+            workers.append({
+                "worker_id": worker_id,
+                "worker_name": name,
+                "worker_price": price,
+                "available": available,
+                "status": status,
+                "remaining_time": remaining_time
+            })
+        
+        return workers
+    except Error as e:
+        print(f"Erreur lors de la récupération du statut des ouvriers: {e}")
+        return []
+    finally:
+        conn.close()
+
+
+# ==== ADMIN FUNCTIONS ====
+
+def add_10k_usd(db_path: str):
+    conn = connect_db(db_path)
+    cursor = conn.cursor()
+    cursor.execute(
+        """
+        UPDATE wallet
+        SET balance_usd = balance_usd + 10000;
+    """
+    )
+    conn.commit()
+    conn.close()
