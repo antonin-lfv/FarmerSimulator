@@ -759,18 +759,19 @@ def populate_db(db_path: str):
         print("Contrats ajoutés avec succès.")
 
         # 6. Peupler la table 'workers'
-        # Supposons que les ouvriers sont déjà initialisés dans init_db avec 5 ouvriers
-        # Vous pouvez ajouter des ouvriers supplémentaires ici si nécessaire
-        # Exemple d'ajout de 2 ouvriers supplémentaires
-        workers_additional = [("Ouvrier 6", 50.0, 1), ("Ouvrier 7", 50.0, 1)]
-        cursor.executemany(
-            """
-            INSERT INTO workers (worker_name, worker_price, available)
-            VALUES (?, ?, ?);
-        """,
-            workers_additional,
-        )
-        print("Ouvriers supplémentaires ajoutés avec succès.")
+        # Initialiser avec 5 ouvriers par défaut avec noms et prix générés
+        cursor.execute("SELECT COUNT(*) FROM workers;")
+        workers_count = cursor.fetchone()[0]
+        if workers_count == 0:
+            # Embaucher 5 ouvriers initiaux
+            for _ in range(5):
+                # Utiliser la fonction hire_worker pour générer automatiquement
+                from database_manager import hire_worker
+                hire_worker(db_path)
+            print("5 ouvriers initiaux embauchés avec succès.")
+        
+        # Ne pas ajouter les ouvriers supplémentaires manuellement
+        # car ils sont maintenant générés automatiquement
 
         # Commit des changements et fermeture de la connexion
         conn.commit()
