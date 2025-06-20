@@ -4,7 +4,7 @@ from streamlit_plotly_events import plotly_events
 from svgpathtools import parse_path, Line, CubicBezier, QuadraticBezier, Arc
 import xml.etree.ElementTree as ET
 from PIL import Image
-from typing import List, Dict, Optional
+from typing import List, Dict, Optional, Any
 import numpy as np
 from config import PATH_config, CSS
 from logo import add_logo
