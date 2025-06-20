@@ -216,6 +216,9 @@ def display_item_radio(
 
 def display_manager(parcelle: int):
 
+    # Compléter les actions terminées au début
+    complete_finished_actions(PATH_config.db_path)
+
     # Récupérer les informations de la parcelle
     parcel_info = get_parcel_info(PATH_config.db_path, parcelle)
     superficie, type_surface, prix, is_purchased = parcel_info.values()
@@ -254,19 +257,49 @@ def display_manager(parcelle: int):
                 inventory = get_user_inventory(PATH_config.db_path)
                 inventory_dict = {item["item_id"]: item for item in inventory}
 
+                # Récupérer les ouvriers disponibles
+                available_workers = get_available_workers(PATH_config.db_path)
+
+                if not available_workers:
+                    st.warning("⚠️ Aucun ouvrier disponible ! Allez dans la section Ouvriers pour en embaucher.")
+                    st.page_link("pages/04_Ouvriers.py", label="Gérer les ouvriers", icon="👥")
+                    return
+
                 # Afficher les actions
                 for action in actions:
                     # Calcul du temps total
                     temps_par_hectare = action["action_time"]
                     temps_total = temps_par_hectare * superficie
+                    
+                    # Calculer le coût estimé avec les ouvriers disponibles
+                    worker_price = available_workers[0]["worker_price"]  # Prix du premier ouvrier disponible
+                    estimated_cost = worker_price * temps_total
+                    
                     st.write(
-                        f"**Temps nécessaire pour {action['action_type'].capitalize()}:** {temps_par_hectare} heures/hectare"
+                        f"**⏰ Temps nécessaire pour {action['action_type'].capitalize()}:** {temps_par_hectare} heures/hectare"
                     )
                     st.caption(f"(Total : {temps_total} heures)")
+                    st.write(f"**💰 Coût estimé:** ${estimated_cost:.2f} USD")
                     st.write("")
 
+                    # Sélection de l'ouvrier
+                    st.subheader("👤 Sélection de l'ouvrier :")
+                    worker_options = [f"{w['worker_name']} (${w['worker_price']:.2f}/h)" for w in available_workers]
+                    selected_worker_idx = st.selectbox(
+                        "Choisissez un ouvrier :",
+                        options=range(len(worker_options)),
+                        format_func=lambda x: worker_options[x],
+                        key=f"worker_select_{action['action_id']}_{parcelle}"
+                    )
+                    selected_worker = available_workers[selected_worker_idx]
+                    
+                    # Recalculer le coût avec l'ouvrier sélectionné
+                    actual_cost = selected_worker["worker_price"] * temps_total
+                    if actual_cost != estimated_cost:
+                        st.write(f"**💰 Coût réel:** ${actual_cost:.2f} USD")
+
                     # Afficher les exigences
-                    st.subheader("**Exigences :**")
+                    st.subheader("**🔧 Exigences :**")
                     st.write("")
                     requirements = action["requirements"]
                     selected_requirements = {}
@@ -287,6 +320,26 @@ def display_manager(parcelle: int):
                             st.error(
                                 f"Aucun item trouvé pour la sous-catégorie '{subcategory}'."
                             )
+                            resources_sufficient = False
+                            continue
+
+                        # Vérifier la disponibilité des véhicules si nécessaire
+                        if any(item['category'] == 'vehicules' for item in items):
+                            # Afficher un avertissement si certains véhicules sont occupés
+                            from database_manager import check_vehicle_availability
+                            available_items = []
+                            for item in items:
+                                if item['category'] == 'vehicules':
+                                    if check_vehicle_availability(PATH_config.db_path, item['item_id']):
+                                        available_items.append(item)
+                                    else:
+                                        st.warning(f"🚫 {item['name']} est actuellement utilisé dans une autre action.")
+                                else:
+                                    available_items.append(item)
+                            items = available_items
+
+                        if not items:
+                            st.error(f"Aucun {subcategory} disponible actuellement.")
                             resources_sufficient = False
                             continue
 
@@ -369,38 +422,60 @@ def display_manager(parcelle: int):
                     else:
                         resources_sufficient = False
 
+                    # Vérifier si l'utilisateur a assez d'argent
+                    current_balance = get_wallet_balance(PATH_config.db_path)
+                    money_sufficient = current_balance >= actual_cost
+
                     st.write("")
 
+                    # Afficher un résumé avant l'action
+                    if resources_sufficient and money_sufficient:
+                        with st.expander("📋 Résumé de l'action", expanded=True):
+                            st.write(f"🎯 **Action :** {action['action_type'].title()}")
+                            st.write(f"📍 **Parcelle :** {parcelle} ({superficie} hectares)")
+                            st.write(f"👤 **Ouvrier :** {selected_worker['worker_name']}")
+                            st.write(f"⏰ **Durée :** {temps_total} heures (≈ {temps_total:.0f} minutes réelles)")
+                            st.write(f"💰 **Coût total :** ${actual_cost:.2f} USD")
+
                     # Bouton pour effectuer l'action
-                    if resources_sufficient:
+                    if resources_sufficient and money_sufficient:
                         if st.button(
-                            f"Effectuer l'action '{action['action_type']}'",
+                            f"🚀 Lancer l'action '{action['action_type']}'",
                             key=f"btn_{action['action_id']}_{parcelle}",
+                            type="primary"
                         ):
-                            success = perform_action(
+                            success = start_action_with_time(
                                 db_path=PATH_config.db_path,
                                 parcel_id=parcelle,
                                 action=action,
                                 selected_requirements=selected_requirements,
+                                worker_id=selected_worker["worker_id"]
                             )
                             if success:
                                 st.success(
-                                    f"L'action '{action['action_type']}' a été réalisée sur la parcelle {parcelle}."
+                                    f"✅ L'action '{action['action_type']}' a été lancée sur la parcelle {parcelle}!"
                                 )
+                                st.balloons()
                                 st.rerun()  # Rafraîchir la page pour afficher les changements
                             else:
                                 st.error(
-                                    "Une erreur est survenue lors de l'exécution de l'action."
+                                    "❌ Une erreur est survenue lors du lancement de l'action."
                                 )
                     else:
-                        st.warning(
-                            "Vous ne disposez pas des ressources nécessaires pour effectuer cette action."
-                        )
-                        st.page_link(
-                            "pages/02_Shop.py",
-                            label="Accéder à la boutique",
-                            icon="🛒",
-                        )
+                        reasons = []
+                        if not resources_sufficient:
+                            reasons.append("ressources insuffisantes")
+                        if not money_sufficient:
+                            reasons.append(f"argent insuffisant (${actual_cost:.2f} requis, ${current_balance:.2f} disponible)")
+                        
+                        st.warning(f"⚠️ Impossible de lancer l'action : {', '.join(reasons)}")
+                        
+                        if not resources_sufficient:
+                            st.page_link(
+                                "pages/02_Shop.py",
+                                label="🛒 Accéder à la boutique",
+                                icon="🛒",
+                            )
                     st.write("")
 
 
