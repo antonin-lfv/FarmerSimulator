@@ -228,7 +228,7 @@ def display_manager(parcelle: int):
     with st.container(border=True):
         st.title(f"Parcelle {parcelle}")
         st.caption(
-            f"{int(superficie)} hectares {'d\'' if type_surface.capitalize()[0] in 'AEIOU' else 'de'} {type_surface.capitalize()}"
+            f"{int(superficie)} hectares " + ("d'" if type_surface.capitalize()[0] in 'AEIOU' else 'de') + f" {type_surface.capitalize()}"
         )
         st.divider()
 
