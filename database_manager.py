@@ -2660,24 +2660,62 @@ def complete_finished_actions(db_path: str):
         
         for action in finished_actions:
             ongoing_id, parcel_id, action_type, resources_used_json = action
+            
+            # Ignorer les contrats (parcel_id = -1)
+            if parcel_id == -1:
+                # Libérer l'ouvrier du contrat
+                cursor.execute("DELETE FROM ongoing_actions WHERE ongoing_action_id = ?", (ongoing_id,))
+                continue
+            
             resources_used = json.loads(resources_used_json)
             
             # Ajouter des récompenses si c'est une récolte
             if "récolter" in action_type.lower():
                 cursor.execute("SELECT superficie FROM parcels WHERE parcel_id = ?", (parcel_id,))
-                superficie = cursor.fetchone()[0]
-                
-                # Générer des packs aléatoirement
-                for subcategory, selected_item in resources_used.items():
-                    if selected_item['category'].lower() == 'packs':
-                        packs_per_hectare = random.randint(2, 5)
-                        total_packs = packs_per_hectare * superficie
+                superficie_row = cursor.fetchone()
+                if superficie_row:
+                    superficie = superficie_row[0]
+                    
+                    # Générer des packs aléatoirement selon le type de récolte
+                    if "céréales" in action_type:
+                        reward_subcategory = "graines céréales"
+                    elif "coton" in action_type:
+                        reward_subcategory = "graines coton"
+                    elif "patates" in action_type:
+                        reward_subcategory = "graines patates"
+                    elif "raisins" in action_type:
+                        reward_subcategory = "graines raisins"
+                    elif "bois" in action_type:
+                        reward_subcategory = "pousses arbres"
+                    else:
+                        reward_subcategory = "graines céréales"  # Par défaut
+                    
+                    # Trouver l'item_id correspondant
+                    cursor.execute("""
+                        SELECT item_id FROM catalog 
+                        WHERE subcategory = ? AND category = 'packs'
+                    """, (reward_subcategory,))
+                    item_row = cursor.fetchone()
+                    
+                    if item_row:
+                        item_id = item_row[0]
+                        packs_per_hectare = random.randint(3, 8)  # 3-8 packs par hectare
+                        total_packs = int(packs_per_hectare * superficie)
                         
-                        item_id = selected_item["item_id"]
+                        # Vérifier si l'utilisateur possède déjà ce pack
+                        cursor.execute("SELECT amount FROM packs WHERE item_id = ?", (item_id,))
+                        existing_pack = cursor.fetchone()
                         
-                        cursor.execute("""
-                            UPDATE packs SET amount = amount + ? WHERE item_id = ?
-                        """, (total_packs, item_id))
+                        if existing_pack:
+                            cursor.execute("""
+                                UPDATE packs SET amount = amount + ? WHERE item_id = ?
+                            """, (total_packs, item_id))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO packs (item_id, amount) VALUES (?, ?)
+                            """, (item_id, total_packs))
+                        
+                        print(f"Récolte terminée: +{total_packs} {reward_subcategory}")
             
             # Mettre à jour l'état de la parcelle
             # Récupérer la prochaine action depuis la table actions
