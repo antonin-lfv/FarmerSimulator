@@ -2639,7 +2639,7 @@ def get_ongoing_actions(db_path: str) -> List[Dict[str, Any]]:
 
 def complete_finished_actions(db_path: str):
     """
-    Complète automatiquement les actions terminées.
+    Complète automatiquement les actions terminées et met à jour l'état des parcelles.
     """
     conn = connect_db(db_path)
     if conn is None:
