@@ -3,6 +3,7 @@ from sqlite3 import Error
 from typing import List, Dict, Any, Optional
 import json
 import random
+import time
 
 
 def connect_db(db_path: str) -> Optional[sqlite3.Connection]:
