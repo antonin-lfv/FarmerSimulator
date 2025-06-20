@@ -2495,9 +2495,9 @@ def complete_finished_actions(db_path: str):
         print(f"Erreur lors de la completion des actions terminées: {e}")
 # ==== WORKER MANAGEMENT SYSTEM ====
 
-def hire_worker(db_path: str, worker_name: str, worker_price: float = 50.0) -> bool:
+def hire_worker(db_path: str, worker_name: str = None, worker_price: float = None) -> bool:
     """
-    Embauche un nouvel ouvrier.
+    Embauche un nouvel ouvrier avec nom et prix générés aléatoirement.
     """
     conn = connect_db(db_path)
     if conn is None:
@@ -2505,6 +2505,29 @@ def hire_worker(db_path: str, worker_name: str, worker_price: float = 50.0) -> b
     
     try:
         cursor = conn.cursor()
+        
+        # Générer un nom aléatoire si non fourni
+        if worker_name is None:
+            first_names = [
+                "Jean", "Pierre", "Michel", "André", "Philippe", "Alain", "Bernard", "Robert",
+                "Jacques", "Louis", "François", "Daniel", "Henri", "Claude", "Marcel", "Paul",
+                "Marie", "Monique", "Françoise", "Nicole", "Martine", "Sylvie", "Catherine",
+                "Annie", "Brigitte", "Christine", "Véronique", "Isabelle", "Nathalie", "Corinne"
+            ]
+            
+            last_names = [
+                "Martin", "Bernard", "Dubois", "Thomas", "Robert", "Petit", "Durand", "Leroy",
+                "Moreau", "Simon", "Laurent", "Lefebvre", "Michel", "Garcia", "David", "Bertrand",
+                "Roux", "Vincent", "Fournier", "Morel", "Girard", "André", "Lefèvre", "Mercier",
+                "Dupont", "Lambert", "Bonnet", "François", "Martinez", "Legrand", "Garnier", "Faure"
+            ]
+            
+            worker_name = f"{random.choice(first_names)} {random.choice(last_names)}"
+        
+        # Générer un prix horaire aléatoire si non fourni (entre 30 et 80 USD/heure)
+        if worker_price is None:
+            worker_price = random.uniform(30.0, 80.0)
+        
         cursor.execute("""
             INSERT INTO workers (worker_name, worker_price, available)
             VALUES (?, ?, 1)
