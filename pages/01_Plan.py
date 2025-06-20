@@ -10,7 +10,11 @@ from config import PATH_config, CSS
 from database_manager import *
 from logo import add_logo
 import streamlit as st
-from database_manager import get_possible_actions, get_wallet_balance, buy_parcel
+from database_manager import (
+    get_possible_actions, get_wallet_balance, buy_parcel, get_parcel_info,
+    get_user_inventory, get_items_by_subcategory, check_user_resources,
+    get_available_workers, start_action_with_time, complete_finished_actions
+)
 
 st.set_page_config(layout="wide")
 
