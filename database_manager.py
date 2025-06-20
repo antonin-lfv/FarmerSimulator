@@ -1104,7 +1104,7 @@ def get_all_workers_status(db_path: str) -> List[Dict[str, Any]]:
 
 def init_market_prices(db_path: str):
     """
-    Initialise les prix du marché pour les différentes catégories de produits.
+    Initialise les prix du marché avec un historique de 10 jours pour les graphiques.
     """
     conn = connect_db(db_path)
     if conn is None:
@@ -1113,6 +1113,13 @@ def init_market_prices(db_path: str):
     try:
         cursor = conn.cursor()
         current_time = get_game_time()
+        
+        # Vérifier si les prix sont déjà initialisés
+        cursor.execute("SELECT COUNT(*) FROM market_prices")
+        existing_count = cursor.fetchone()[0]
+        
+        if existing_count > 0:
+            return  # Déjà initialisé
         
         # Prix initiaux pour différentes catégories
         initial_prices = [
@@ -1130,20 +1137,36 @@ def init_market_prices(db_path: str):
             ("harvest", "bois", 70.0),
         ]
         
-        for category, subcategory, price in initial_prices:
-            # Vérifier si le prix existe déjà
-            cursor.execute("""
-                SELECT COUNT(*) FROM market_prices 
-                WHERE item_category = ? AND item_subcategory = ?
-            """, (category, subcategory))
+        # Créer un historique de 10 jours (1 jour = 24 heures de jeu = 24 minutes réelles)
+        day_in_seconds = 24 * 60  # 24 minutes en secondes
+        
+        for day in range(10, 0, -1):  # De 10 jours dans le passé à aujourd'hui
+            day_timestamp = current_time - (day * day_in_seconds)
             
-            if cursor.fetchone()[0] == 0:
+            for category, subcategory, base_price in initial_prices:
+                # Variation aléatoire pour l'historique
+                if day == 10:  # Premier jour, prix de base
+                    price = base_price
+                else:
+                    # Variation progressive depuis le prix de base
+                    variation = random.uniform(-0.2, 0.2)  # ±20% max de variation
+                    price = base_price * (1 + variation)
+                    
+                    # Appliquer les limites
+                    if category == "packs":
+                        price = max(10.0, min(price, 120.0))
+                    elif category == "harvest":
+                        price = max(25.0, min(price, 250.0))
+                
+                price = round(price, 2)
+                
                 cursor.execute("""
                     INSERT INTO market_prices (item_category, item_subcategory, price, timestamp)
                     VALUES (?, ?, ?, ?)
-                """, (category, subcategory, price, current_time))
+                """, (category, subcategory, price, day_timestamp))
         
         conn.commit()
+        print("Historique des prix du marché initialisé sur 10 jours")
         
     except Error as e:
         print(f"Erreur lors de l'initialisation des prix du marché: {e}")
