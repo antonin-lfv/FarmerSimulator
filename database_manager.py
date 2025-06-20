@@ -177,6 +177,50 @@ def init_db(db_path: str):
         """
         )
 
+        # 12. Table 'ongoing_actions' pour tracker les actions en cours
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS ongoing_actions (
+                ongoing_action_id INTEGER PRIMARY KEY,
+                parcel_id INTEGER NOT NULL,
+                action_type TEXT NOT NULL,
+                worker_id INTEGER NOT NULL,
+                start_time REAL NOT NULL,
+                end_time REAL NOT NULL,
+                resources_used TEXT NOT NULL, -- JSON des ressources utilisées
+                cost REAL NOT NULL,
+                FOREIGN KEY (parcel_id) REFERENCES parcels(parcel_id),
+                FOREIGN KEY (worker_id) REFERENCES workers(worker_id)
+            );
+        """
+        )
+
+        # 13. Table 'market_prices' pour le système de cours
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS market_prices (
+                price_id INTEGER PRIMARY KEY,
+                item_category TEXT NOT NULL,
+                item_subcategory TEXT NOT NULL,
+                price REAL NOT NULL,
+                timestamp REAL NOT NULL
+            );
+        """
+        )
+
+        # 14. Table 'used_vehicles' pour tracker les véhicules en cours d'utilisation
+        cursor.execute(
+            """
+            CREATE TABLE IF NOT EXISTS used_vehicles (
+                used_vehicle_id INTEGER PRIMARY KEY,
+                item_id INTEGER NOT NULL,
+                ongoing_action_id INTEGER NOT NULL,
+                FOREIGN KEY (item_id) REFERENCES catalog(item_id),
+                FOREIGN KEY (ongoing_action_id) REFERENCES ongoing_actions(ongoing_action_id)
+            );
+        """
+        )
+
         # Initialisation des tables avec des données par défaut si nécessaire
 
         # Initialisation du wallet si vide
