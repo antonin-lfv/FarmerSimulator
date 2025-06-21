@@ -1,8 +1,169 @@
-En local :
+# 🚜 Simulateur de Ferme - Version Simplifiée
 
+Un simulateur de ferme interactif développé avec Streamlit, avec système de marché automatique.
+
+## 🌟 Fonctionnalités
+
+### 🎮 **Gameplay Principal**
+- **🗺️ Gestion des parcelles** : Achetez et gérez différents types de terrains (champs, forêts, vignes, entrepôts)
+- **🌾 Actions agricoles** : Labourez, semez, fertilisez, récoltez selon le cycle des cultures
+- **🛒 Système de boutique** : Achetez véhicules, accessoires et matériaux
+- **📦 Gestion d'inventaire** : Suivez vos possessions et vendez vos récoltes
+
+### 📈 **Marché Automatique**
+- **Prix dynamiques** : Les cours fluctuent automatiquement selon l'offre et la demande
+- **Historique complet** : 10 jours d'historique des prix pour optimiser vos ventes
+- **Événements spéciaux** : Sécheresse, bonnes récoltes, variations de demande
+- **Mise à jour quotidienne** : 1 jour de jeu = 24 minutes réelles
+
+### ⚡ **Système Temps Réel**
+- **Actions temporisées** : Chaque action prend du temps selon la superficie
+- **Progression automatique** : Les actions se terminent automatiquement
+- **États des champs** : L'état change après chaque action (semé → fertiliser → récolter)
+
+## 🚀 Démarrage Rapide
+
+### Installation
 ```bash
-poetry run streamlit run Dashboard.py
+# Installer les dépendances
+pip install -r requirements.txt
 ```
+
+### Lancement Automatique
+```bash
+# Démarrer le simulateur complet (Web + Service de marché)
+./start_farm_simulator.sh
+```
+
+### Lancement Manuel
+```bash
+# Application web seulement
+streamlit run Dashboard.py --server.port 8001
+
+# Service de marché en arrière-plan
+python3 market_updater.py &
+```
+
+### Arrêt
+```bash
+# Arrêter tous les services
+./stop_farm_simulator.sh
+```
+
+## 📋 Pages Disponibles
+
+1. **🏠 Dashboard** - Vue d'ensemble et métriques
+2. **🗺️ Plan** - Gestion des parcelles et actions agricoles  
+3. **🛒 Shop** - Achat de véhicules, accessoires et matériaux
+4. **📦 Inventaire** - Gestion des possessions
+5. **📈 Marché** - Prix actuels, historique et vente de récoltes
+
+## 🎯 Guide de Jeu
+
+### Démarrage
+1. Achetez votre première parcelle sur la page **Plan**
+2. Allez à la **Boutique** pour acheter des véhicules et matériaux
+3. Retournez au **Plan** pour effectuer votre première action (ex: labourer)
+
+### Cycle Agricole Standard
+```
+Acheter parcelle → Labourer → Semer → Fertiliser → Récolter → Vendre
+```
+
+### Optimisation
+- Consultez le **Marché** pour vendre au meilleur prix
+- Utilisez l'historique des prix pour prévoir les tendances
+- Gérez plusieurs parcelles en parallèle pour maximiser les profits
+
+## 📁 Structure du Projet
+
+```
+/app/
+├── Dashboard.py              # Page principale
+├── pages/                    # Pages Streamlit
+│   ├── 01_Plan.py           # Gestion des parcelles
+│   ├── 02_Shop.py           # Boutique
+│   ├── 03_Inventaire.py     # Inventaire
+│   └── 05_Marche.py         # Marché
+├── database_manager.py       # Gestion base de données
+├── config.py                # Configuration
+├── market_updater.py        # Service de marché automatique
+├── start_farm_simulator.sh  # Script de démarrage
+├── stop_farm_simulator.sh   # Script d'arrêt
+└── logs/                    # Fichiers de logs
+```
+
+## 🔧 Configuration
+
+### Base de Données
+- **Type** : SQLite
+- **Fichier** : `farming_simulator.db`
+- **Initialisation** : Automatique au premier démarrage
+
+### Services
+- **Application web** : Port 8001
+- **Mise à jour marché** : Toutes les 24 minutes (1 jour de jeu)
+- **Logs** : Dossier `logs/`
+
+## 📊 Système de Marché
+
+### Fréquence de Mise à Jour
+- **1 jour de jeu = 24 minutes réelles**
+- Vérification automatique toutes les minutes
+- Mise à jour effective seulement si délai écoulé
+
+### Facteurs de Prix
+- **Saisonniers** : Variations selon les cycles
+- **Météorologiques** : Événements climatiques
+- **Offre/demande** : Fluctuations du marché
+- **Mean reversion** : Retour progressif vers les prix moyens
+
+### Événements Spéciaux (10% de chance par jour)
+- 🌵 **Sécheresse** : +30% prix récoltes, +10% matériaux
+- 🌾 **Récolte exceptionnelle** : -30% prix récoltes, -10% matériaux  
+- 🚢 **Forte demande export** : +40% prix récoltes
+- ⛽ **Hausse carburant** : +10% récoltes, +20% matériaux
+- 🏛️ **Subventions** : -10% récoltes, -20% matériaux
+
+## 🛠️ Administration
+
+### Commandes Utiles
+```bash
+# Voir les logs en temps réel
+tail -f logs/streamlit.log
+tail -f logs/market_updater.log
+
+# Status des processus
+ps aux | grep streamlit
+ps aux | grep market_updater
+
+# Forcer l'arrêt
+pkill -f streamlit
+pkill -f market_updater
+```
+
+### Debug
+- Logs détaillés dans `/app/logs/`
+- Base de données accessible via SQLite
+- Fonctions admin disponibles dans le Dashboard
+
+## 🎮 Conseils de Jeu
+
+### Économie
+- Commencez par acheter quelques parcelles
+- Investissez dans des véhicules polyvalents
+- Surveillez les prix du marché avant de vendre
+- Diversifiez vos cultures pour réduire les risques
+
+### Stratégie
+- Les vignes sont plus rentables mais prennent plus de temps
+- Les céréales offrent un retour rapide sur investissement  
+- Stockez vos récoltes si les prix sont bas
+- Planifiez vos actions pour optimiser le temps
+
+---
+
+**Bon jeu ! 🌾🚜**
 
 # Database
 
