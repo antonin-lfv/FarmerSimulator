@@ -73,28 +73,26 @@ with col1:
         st.metric("💰 Solde Total", "Erreur")
 
 with col2:
+    # Compter les parcelles achetées
+    import sqlite3
+    conn = sqlite3.connect(PATH_config.db_path)
+    cursor = conn.cursor()
+    cursor.execute("SELECT COUNT(*) FROM parcels WHERE is_purchased = 1")
+    owned_parcels = cursor.fetchone()[0]
+    conn.close()
+    
+    st.metric(
+        label="🏡 Parcelles Possédées",
+        value=owned_parcels,
+        delta="terrain(s)"
+    )
+
+with col3:
     active_actions = len(ongoing_actions)
     st.metric(
         label="⚙️ Actions en Cours",
         value=active_actions,
         delta=f"operation{'s' if active_actions != 1 else ''}"
-    )
-
-with col3:
-    available_workers = len([w for w in workers_status if "Disponible" in w['status']])
-    total_workers = len(workers_status)
-    st.metric(
-        label="👥 Ouvriers Libres",
-        value=f"{available_workers}/{total_workers}",
-        delta=f"disponible{'s' if available_workers != 1 else ''}"
-    )
-
-with col4:
-    contracts_count = len(available_contracts)
-    st.metric(
-        label="📋 Contrats Disponibles",
-        value=contracts_count,
-        delta=f"mission{'s' if contracts_count != 1 else ''}"
     )
 
 st.divider()
