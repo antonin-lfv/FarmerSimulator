@@ -52,8 +52,6 @@ st.header("📊 Vue d'ensemble")
 # Récupérer les données
 user_balance = get_wallet_balance(PATH_config.db_path)
 ongoing_actions = get_ongoing_actions(PATH_config.db_path)
-workers_status = get_all_workers_status(PATH_config.db_path)
-available_contracts = get_available_contracts(PATH_config.db_path)
 
 # Métriques principales en colonnes
 col1, col2, col3, col4 = st.columns(4)
