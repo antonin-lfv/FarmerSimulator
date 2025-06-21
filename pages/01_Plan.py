@@ -323,30 +323,6 @@ def display_manager(parcelle: int):
                             resources_sufficient = False
                             continue
 
-                        # Vérifier la disponibilité des véhicules si nécessaire
-                        if any(item['category'] == 'vehicules' for item in items):
-                            # Afficher un avertissement si certains véhicules sont occupés
-                            from database_manager import get_available_vehicle_count
-                            available_items = []
-                            for item in items:
-                                if item['category'] == 'vehicules':
-                                    available_count = get_available_vehicle_count(PATH_config.db_path, item['item_id'])
-                                    if available_count > 0:
-                                        # Mettre à jour le texte pour montrer les disponibles
-                                        item_copy = item.copy()
-                                        item_copy['amount'] = available_count
-                                        available_items.append(item_copy)
-                                    else:
-                                        st.warning(f"🚫 Tous les {item['name']} sont actuellement utilisés.")
-                                else:
-                                    available_items.append(item)
-                            items = available_items
-
-                        if not items:
-                            st.error(f"Aucun {subcategory} disponible actuellement.")
-                            resources_sufficient = False
-                            continue
-
                         # Utiliser un menu déroulant (selectbox) pour sélectionner l'item
                         if len(items) > 1:
                             option_names = [
