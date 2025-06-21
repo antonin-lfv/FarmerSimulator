@@ -2459,13 +2459,6 @@ def complete_finished_actions(db_path: str):
         
         for action in finished_actions:
             ongoing_id, parcel_id, action_type, resources_used_json = action
-            
-            # Ignorer les contrats (parcel_id = -1)
-            if parcel_id == -1:
-                # Libérer l'ouvrier du contrat
-                cursor.execute("DELETE FROM ongoing_actions WHERE ongoing_action_id = ?", (ongoing_id,))
-                continue
-            
             resources_used = json.loads(resources_used_json)
             
             # Ajouter des récompenses si c'est une récolte
