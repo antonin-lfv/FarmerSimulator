@@ -184,7 +184,7 @@ def init_db(db_path: str):
         """
         )
 
-        # 13. Table 'market_prices' pour le système de cours
+        # 12. Table 'market_prices' pour le système de cours
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS market_prices (
@@ -197,7 +197,7 @@ def init_db(db_path: str):
         """
         )
 
-        # 14. Table 'used_vehicles' pour tracker les véhicules en cours d'utilisation
+        # 13. Table 'used_vehicles' pour tracker les véhicules en cours d'utilisation
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS used_vehicles (
