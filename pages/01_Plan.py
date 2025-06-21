@@ -424,23 +424,38 @@ def display_manager(parcelle: int):
                             key=f"btn_{action['action_id']}_{parcelle}",
                             type="primary"
                         ):
-                            success = start_action_with_time(
-                                db_path=PATH_config.db_path,
-                                parcel_id=parcelle,
-                                action=action,
-                                selected_requirements=selected_requirements,
-                                worker_id=selected_worker["worker_id"]
-                            )
-                            if success:
-                                st.success(
-                                    f"✅ L'action '{action['action_type']}' a été lancée sur la parcelle {parcelle}!"
+                            try:
+                                # Debug: afficher les paramètres
+                                with st.expander("🔍 Debug - Paramètres de l'action", expanded=False):
+                                    st.json({
+                                        "parcel_id": parcelle,
+                                        "action": action,
+                                        "selected_requirements": selected_requirements,
+                                        "worker_id": selected_worker["worker_id"]
+                                    })
+                                
+                                success = start_action_with_time(
+                                    db_path=PATH_config.db_path,
+                                    parcel_id=parcelle,
+                                    action=action,
+                                    selected_requirements=selected_requirements,
+                                    worker_id=selected_worker["worker_id"]
                                 )
-                                st.balloons()
-                                st.rerun()  # Rafraîchir la page pour afficher les changements
-                            else:
-                                st.error(
-                                    "❌ Une erreur est survenue lors du lancement de l'action."
-                                )
+                                if success:
+                                    st.success(
+                                        f"✅ L'action '{action['action_type']}' a été lancée sur la parcelle {parcelle}!"
+                                    )
+                                    st.balloons()
+                                    st.rerun()  # Rafraîchir la page pour afficher les changements
+                                else:
+                                    st.error(
+                                        "❌ L'action a échoué (start_action_with_time a retourné False)"
+                                    )
+                            except Exception as e:
+                                st.error(f"❌ Erreur détaillée: {str(e)}")
+                                # Afficher la stack trace pour debug
+                                import traceback
+                                st.code(traceback.format_exc())
                     else:
                         reasons = []
                         if not resources_sufficient:
