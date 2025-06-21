@@ -27,11 +27,7 @@ init_market_prices(PATH_config.db_path)
 if 'last_dashboard_refresh' not in st.session_state:
     st.session_state.last_dashboard_refresh = time.time()
 
-# Mise à jour automatique des prix du marché toutes les 5 minutes
-if time.time() - st.session_state.last_dashboard_refresh > 300:
-    update_market_prices(PATH_config.db_path)
-    generate_new_contracts(PATH_config.db_path)
-    st.session_state.last_dashboard_refresh = time.time()
+# Ne plus faire de mise à jour automatique ici car on va créer un script séparé
 
 # Compléter les actions terminées
 complete_finished_actions(PATH_config.db_path)
