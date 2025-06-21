@@ -711,41 +711,9 @@ def populate_db(db_path: str):
         )
         print("Action requirements ajoutés avec succès.")
 
-        # 5. Peupler la table 'contracts'
-        contracts_data = [
-            (
-                1,
-                "Récolte de maïs sur le champ 7",
-                500.0,
-                json.dumps({"action_type": "récolter céréales", "parcel_id": 7}),
-            ),
-            (
-                2,
-                "Couper le bois dans la forêt 6",
-                750.0,
-                json.dumps({"action_type": "couper le bois", "parcel_id": 6}),
-            ),
-            (
-                3,
-                "Récolte des raisins sur la vigne 1",
-                600.0,
-                json.dumps({"action_type": "tailler les vignes", "parcel_id": 1}),
-            ),
-            (
-                4,
-                "Stockage dans l'entrepôt 3",
-                300.0,
-                json.dumps({"action_type": "stockage", "parcel_id": 3}),
-            ),
-        ]
-        cursor.executemany(
-            """
-            INSERT INTO contracts (contract_id, description, reward, requirements)
-            VALUES (?, ?, ?, ?);
-        """,
-            contracts_data,
-        )
-        print("Contrats ajoutés avec succès.")
+        # Commit des changements et fermeture de la connexion
+        conn.commit()
+        print("Base de données peuplée avec succès.")
 
         # 6. Peupler la table 'workers'
         # Initialiser avec 5 ouvriers par défaut avec noms et prix générés
