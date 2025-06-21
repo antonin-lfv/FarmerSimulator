@@ -166,19 +166,7 @@ def init_db(db_path: str):
         """
         )
 
-        # 11. Table 'contracts' (ajouté pour suivre les contrats mentionnés précédemment)
-        cursor.execute(
-            """
-            CREATE TABLE IF NOT EXISTS contracts (
-                contract_id INTEGER PRIMARY KEY,
-                description TEXT NOT NULL,
-                reward REAL NOT NULL,
-                requirements TEXT -- Stocké en JSON
-            );
-        """
-        )
-
-        # 12. Table 'ongoing_actions' pour tracker les actions en cours
+        # 11. Table 'ongoing_actions' pour tracker les actions en cours
         cursor.execute(
             """
             CREATE TABLE IF NOT EXISTS ongoing_actions (
