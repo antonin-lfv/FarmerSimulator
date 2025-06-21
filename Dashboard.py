@@ -167,23 +167,12 @@ nav_col1, nav_col2, nav_col3 = st.columns(3)
 with nav_col1:
     st.markdown("### 🎯 Gestion")
     st.page_link("pages/01_Plan.py", label="🗺️ Plan de la ferme", icon="🗺️")
-    st.page_link("pages/04_Ouvriers.py", label="👥 Gérer les ouvriers", icon="👥")
     st.page_link("pages/03_Inventaire.py", label="📦 Mon inventaire", icon="📦")
 
 with nav_col2:
     st.markdown("### 💼 Commerce")
     st.page_link("pages/02_Shop.py", label="🛒 Boutique", icon="🛒")
     st.page_link("pages/05_Marche.py", label="📈 Marché", icon="📈")
-    
-    # Afficher s'il y a des contrats intéressants
-    if available_contracts:
-        high_value_contracts = [c for c in available_contracts if c['reward'] > 500]
-        if high_value_contracts:
-            st.page_link("pages/06_Contrats.py", label="⭐ Contrats premium", icon="⭐")
-        else:
-            st.page_link("pages/06_Contrats.py", label="📋 Contrats", icon="📋")
-    else:
-        st.page_link("pages/06_Contrats.py", label="📋 Contrats", icon="📋")
 
 with nav_col3:
     st.markdown("### ⚡ Actions Rapides")
@@ -195,9 +184,11 @@ with nav_col3:
         st.success("💰 10,000 USD ajoutés !")
         st.rerun()
     
-    if st.button("🔄 Actualiser tout"):
+    if st.button("🔄 Actualiser marché"):
+        from database_manager import update_market_prices
         update_market_prices(PATH_config.db_path)
-        generate_new_contracts(PATH_config.db_path)
+        st.success("✅ Marché actualisé !")
+        st.rerun()
         st.success("✅ Données actualisées !")
         st.rerun()
 
