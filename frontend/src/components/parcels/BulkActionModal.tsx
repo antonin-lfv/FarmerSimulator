@@ -1,0 +1,129 @@
+"use client";
+
+import { useEffect, useState } from "react";
+import { Users } from "lucide-react";
+import { Modal } from "@/components/ui/Modal";
+import { Button } from "@/components/ui/Button";
+import { ResourcePicker } from "@/components/shop/ResourcePicker";
+import { useToast } from "@/components/ui/ToastProvider";
+import { api } from "@/lib/api";
+import { decodeResourceValue } from "@/lib/utils";
+import type { ActionRequirement, CatalogItem, ResourceMode, Worker } from "@/lib/types";
+
+interface BulkActionModalProps {
+  open: boolean;
+  onClose: () => void;
+  actionType: string;
+  eligibleCount: number;
+  requirements: ActionRequirement[];
+  catalog: CatalogItem[];
+  workers: Worker[];
+  onRefreshCatalog: () => Promise<void>;
+  /** Called after the batch runs so the caller can refresh its parcel list. */
+  onDone: () => void;
+}
+
+export function BulkActionModal({
+  open,
+  onClose,
+  actionType,
+  eligibleCount,
+  requirements,
+  catalog,
+  workers,
+  onRefreshCatalog,
+  onDone,
+}: BulkActionModalProps) {
+  const [selections, setSelections] = useState<Record<string, string>>({});
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const push = useToast();
+
+  useEffect(() => {
+    if (open) {
+      setSelections({});
+      setError(null);
+    }
+  }, [open]);
+
+  if (!open) return null;
+
+  const freeWorkers = workers.filter((w) => w.available).length;
+
+  async function handleConfirm() {
+    const resources = requirements.map((req) => {
+      const decoded = decodeResourceValue(selections[req.subcategory]);
+      return {
+        subcategory: req.subcategory,
+        item_id: decoded?.itemId ?? 0,
+        mode: (decoded?.mode ?? "own") as ResourceMode,
+      };
+    });
+    if (resources.some((r) => !r.item_id)) {
+      setError("Sélectionnez un article pour chaque ressource requise.");
+      return;
+    }
+    setBusy(true);
+    setError(null);
+    try {
+      const result = await api.bulkStartAction(actionType, resources);
+      const parts = [`${result.started} lancée(s)`];
+      if (result.no_worker > 0) parts.push(`${result.no_worker} en attente d'ouvrier`);
+      if (result.failures.length > 0) parts.push(`${result.failures.length} échouée(s)`);
+      push({
+        tone: result.started > 0 ? "success" : "error",
+        title: `Action groupée — ${actionType}`,
+        description:
+          parts.join(", ") +
+          (result.failures.length > 0 ? ` (ex : ${result.failures[0].message})` : "") +
+          (result.no_worker > 0 ? " — relancez plus tard pour continuer." : ""),
+      });
+      onDone();
+      onClose();
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <Modal open={open} onClose={onClose} title="Action groupée" className="max-w-2xl">
+      <div className="flex flex-col gap-6">
+        <div className="rounded-lg border border-border p-4">
+          <p className="font-medium capitalize text-foreground">{actionType}</p>
+          <p className="mt-1 text-sm text-foreground-muted">
+            {eligibleCount} parcelle{eligibleCount > 1 ? "s" : ""} concernée{eligibleCount > 1 ? "s" : ""} par cette
+            action.
+          </p>
+        </div>
+
+        {requirements.map((req) => (
+          <ResourcePicker
+            key={req.subcategory}
+            subcategory={req.subcategory}
+            amountLabel="quantité par parcelle selon sa superficie"
+            catalog={catalog}
+            value={selections[req.subcategory] ?? ""}
+            onChange={(value) => setSelections((cur) => ({ ...cur, [req.subcategory]: value }))}
+            onRefreshCatalog={onRefreshCatalog}
+          />
+        ))}
+
+        <div className="flex items-start gap-2.5 rounded-lg bg-surface-sunken px-4 py-3 text-sm text-foreground-secondary">
+          <Users size={16} className="mt-0.5 shrink-0 text-foreground-muted" />
+          <p>
+            Un ouvrier ne peut traiter qu&apos;une parcelle à la fois — {freeWorkers} libre
+            {freeWorkers > 1 ? "s" : ""} en ce moment, donc {Math.min(freeWorkers, eligibleCount)} parcelle
+            {Math.min(freeWorkers, eligibleCount) > 1 ? "s" : ""} démarreront tout de suite. Relancez cette action
+            groupée une fois des ouvriers libérés pour traiter le reste.
+          </p>
+        </div>
+
+        {error && <p className="text-sm text-red-600">{error}</p>}
+
+        <Button size="lg" className="py-3.5 text-base" onClick={handleConfirm} disabled={busy}>
+          Lancer sur toutes ({eligibleCount})
+        </Button>
+      </div>
+    </Modal>
+  );
+}

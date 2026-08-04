@@ -1,0 +1,62 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-verdance}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-verdance}
+      POSTGRES_DB: ${POSTGRES_DB:-verdance}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-verdance} -d ${POSTGRES_DB:-verdance}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  backend:
+    build: ./backend
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-verdance}:${POSTGRES_PASSWORD:-verdance}@db:5432/${POSTGRES_DB:-verdance}
+      CORS_ORIGINS: http://localhost:3000,http://verdance.test
+      # Debug: every action takes this many real seconds instead of its real
+      # duration, so the full action pipeline can be tested quickly. Remove
+      # (or leave unset) to restore real action durations.
+      DEBUG_ACTION_SECONDS: ${DEBUG_ACTION_SECONDS:-5}
+      # Debug: 1 in-game month = this many real seconds (default 5 minutes).
+      # Real-world pacing is 1 month = 1 week (604800s) — unset to restore it.
+      GAME_MONTH_SECONDS: ${GAME_MONTH_SECONDS:-300}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        # Relative, not absolute — the browser reaches the API through Caddy
+        # on whatever host it's browsing from (verdance.test), so this must
+        # not hardcode localhost. See ./Caddyfile.
+        NEXT_PUBLIC_API_URL: /api
+    ports:
+      - "3000:3000"
+    depends_on:
+      - backend
+
+  caddy:
+    image: caddy:2-alpine
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:
+  caddy_data:
