@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { usePathname } from "next/navigation";
-import { Menu, User, Table2, Landmark, Settings } from "lucide-react";
+import { Menu, User, Table2, Landmark, Settings, Receipt, History } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useClickOutside } from "@/lib/hooks";
 
 const ITEMS = [
   { href: "/account", label: "Compte", icon: User },
   { href: "/parcels", label: "Gestion des parcelles", icon: Table2 },
+  { href: "/invoices", label: "Factures", icon: Receipt },
+  { href: "/history", label: "Historique des actions", icon: History },
   { href: "/bank", label: "Banque", icon: Landmark },
   { href: "/settings", label: "Paramètres", icon: Settings },
 ];
@@ -18,20 +21,7 @@ export function NavBurgerMenu() {
   const rootRef = useRef<HTMLDivElement>(null);
   const pathname = usePathname();
 
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, []);
+  useClickOutside(rootRef, () => setOpen(false), { escape: true });
 
   return (
     <div ref={rootRef} className="relative shrink-0">

@@ -16,18 +16,9 @@ from app.models import (
     TypeSurface,
     Vehicule,
     Wallet,
-    Worker,
 )
 
 TYPE_SURFACES = ["champ", "forêt", "vigne", "entrepôt"]
-
-WORKERS = [
-    ("Ouvrier 1", 50.0),
-    ("Ouvrier 2", 50.0),
-    ("Ouvrier 3", 50.0),
-    ("Ouvrier 4", 50.0),
-    ("Ouvrier 5", 50.0),
-]
 
 # (parcel_id, superficie, type_surface, prix, parcel_next_action, is_purchased)
 # Parcel 7 starts owned so a new game begins with a first field ready to work,
@@ -126,29 +117,44 @@ STARTING_ACCESSORIES = [(15, 1), (16, 1), (17, 1)]  # labourer, semer, engrais
 STARTING_PACKS = [(18, 5), (26, 5)]  # Graines de blés, Engrais
 
 # (action_id, action_type, type_surface, action_time_minutes, next_action)
+# Champ used to have three parallel "semer X" actions (céréales/coton/patates)
+# — each required its own crop-specific seed pack but was otherwise
+# byte-for-byte identical, so the player was really being asked to pick a
+# crop family via *which action* they clicked. Collapsed into one generic
+# "semer" — the seed item picked in its ActionRequirement (marker
+# CHAMP_SEED_MARKER, see action_service.py) now IS the crop choice.
+# "mettre engrais X" and "récolter X" stay crop-specific (fertilizing doesn't
+# need different equipment, but harvesting does: moissonneuse vs. ramasse
+# coton vs. ramasse patates), so "semer" can't have one fixed next_action —
+# action_service._next_fertilize_action resolves the crop-specific successor
+# dynamically from whatever was actually planted.
 ACTIONS = [
-    (1, "labourer", "champ", 2.0, "semer céréales"),
-    (2, "semer céréales", "champ", 1.5, "mettre engrais céréales"),
+    (1, "labourer", "champ", 2.0, "semer"),
+    (2, "semer", "champ", 1.5, "mettre engrais céréales"),
     (3, "mettre engrais céréales", "champ", 1.0, "récolter céréales"),
     (4, "récolter céréales", "champ", 2.5, "labourer"),
-    (5, "semer coton", "champ", 1.5, "mettre engrais coton"),
     (6, "mettre engrais coton", "champ", 1.0, "récolter coton"),
     (7, "récolter coton", "champ", 2.5, "labourer"),
-    (8, "semer patates", "champ", 1.5, "mettre engrais patates"),
     (9, "mettre engrais patates", "champ", 1.0, "récolter patates"),
     (10, "récolter patates", "champ", 2.5, "labourer"),
     (11, "planter des arbres", "forêt", 3.0, "couper le bois"),
     (12, "couper le bois", "forêt", 4.0, "planter des arbres"),
     (13, "planter des vignes", "vigne", 2.0, "recolter raisins"),
     (14, "recolter raisins", "vigne", 3.0, "planter des vignes"),
-    (15, "stockage", "entrepôt", 1.0, None),
+    # No action_id 15 ("stockage") — it was seeded but unreachable: no parcel's
+    # parcel_next_action or any other Action.next_action ever pointed to it
+    # (entrepôt parcels seed with parcel_next_action=None and are advanced via
+    # upgrade_storage, not the action-chain system at all).
 ]
 
 # (action_requirements_id, action_id, subcategory, amount)
+# "graines" (action_id 2, "semer") is the CHAMP_SEED_MARKER pseudo-subcategory,
+# not a real Catalog subcategory — start_action() accepts any item from
+# "graines céréales"/"graines coton"/"graines patates" for it.
 ACTION_REQUIREMENTS = [
     (1, 1, "tracteur", 1),
     (2, 1, "accessoire pour labourer", 1),
-    (3, 2, "graines céréales", 1),
+    (3, 2, "graines", 1),
     (4, 2, "accessoire pour semer", 1),
     (5, 2, "tracteur", 1),
     (6, 3, "engrais", 1),
@@ -158,16 +164,10 @@ ACTION_REQUIREMENTS = [
     (10, 4, "coupe de moissonneuse", 1),
     (11, 4, "tracteur", 1),
     (12, 4, "benne", 1),
-    (13, 5, "graines coton", 1),
-    (14, 5, "accessoire pour semer", 1),
-    (15, 5, "tracteur", 1),
     (16, 6, "engrais", 1),
     (17, 6, "tracteur", 1),
     (18, 6, "accessoire pour engrais", 1),
     (19, 7, "ramasse coton", 1),
-    (20, 8, "graines patates", 1),
-    (21, 8, "accessoire pour semer", 1),
-    (22, 8, "tracteur", 1),
     (23, 9, "engrais", 1),
     (24, 9, "tracteur", 1),
     (25, 9, "accessoire pour engrais", 1),
@@ -205,12 +205,6 @@ def seed_if_empty(db: Session) -> None:
     if db.query(TypeSurface).count() == 0:
         db.add_all(TypeSurface(type_surface=name) for name in TYPE_SURFACES)
         db.flush()
-
-    if db.query(Worker).count() == 0:
-        db.add_all(
-            Worker(worker_name=name, worker_price=price, available=True)
-            for name, price in WORKERS
-        )
 
     if db.query(Parcel).count() == 0:
         surface_ids = {
@@ -276,10 +270,10 @@ def seed_if_empty(db: Session) -> None:
         _seed_market_history(db)
 
     if db.query(Vehicule).count() == 0:
-        db.add_all(Vehicule(item_id=item_id, amount=amount, num_available=amount) for item_id, amount in STARTING_VEHICULES)
+        db.add_all(Vehicule(item_id=item_id, amount=amount) for item_id, amount in STARTING_VEHICULES)
 
     if db.query(Accessory).count() == 0:
-        db.add_all(Accessory(item_id=item_id, amount=amount, num_available=amount) for item_id, amount in STARTING_ACCESSORIES)
+        db.add_all(Accessory(item_id=item_id, amount=amount) for item_id, amount in STARTING_ACCESSORIES)
 
     if db.query(Pack).count() == 0:
         db.add_all(Pack(item_id=item_id, amount=amount) for item_id, amount in STARTING_PACKS)

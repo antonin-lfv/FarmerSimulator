@@ -107,18 +107,6 @@ body {
   }
 }
 
-@keyframes popIn {
-  0% {
-    transform: scale(1);
-  }
-  35% {
-    transform: scale(1.06);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
 .animate-fade-in {
   animation: fadeIn 150ms ease-out;
 }
@@ -135,10 +123,6 @@ body {
   animation: softPulse 2.2s ease-in-out infinite;
 }
 
-.animate-pop {
-  animation: popIn 320ms ease-out;
-}
-
 @keyframes ticker {
   from {
     transform: translateX(0);
@@ -150,19 +134,6 @@ body {
 
 .animate-ticker {
   animation: ticker 45s linear infinite;
-}
-
-@keyframes rainDrift {
-  from {
-    background-position: 0 0;
-  }
-  to {
-    background-position: -40px 120px;
-  }
-}
-
-.animate-rain-drift {
-  animation: rainDrift 1.4s linear infinite;
 }
 
 @keyframes heatShimmer {
@@ -195,20 +166,6 @@ body {
   animation: frostShimmer 4s ease-in-out infinite;
 }
 
-@keyframes tractorSweep {
-  0%,
-  100% {
-    left: 14%;
-  }
-  50% {
-    left: 78%;
-  }
-}
-
-.animate-tractor-sweep {
-  animation: tractorSweep 4.5s ease-in-out infinite;
-}
-
 @keyframes bounceIcon {
   0%,
   100% {
@@ -239,4 +196,29 @@ body {
 
 .animate-cloud-drift-slow {
   animation: cloudDrift 26s ease-in-out infinite;
+}
+
+/* Farm map water/boat decor — plain CSS, not SMIL (<animate>/<animateMotion>):
+   SMIL elements rendered through React's SVG reconciliation don't reliably
+   repaint in Chromium, especially nested inside a clip-path'd <g> — confirmed
+   via getBoundingClientRect() staying frozen across several seconds despite
+   the SVG document timeline (getCurrentTime()) advancing normally. Every other
+   animated marker on this map (e.g. bounce-icon) was already plain CSS for
+   the same reason — this should have followed suit from the start. */
+@keyframes waterDrift {
+  0%,
+  100% {
+    transform: translateX(-60px);
+  }
+  50% {
+    transform: translateX(60px);
+  }
+}
+
+.animate-water-drift {
+  animation: waterDrift 11s ease-in-out infinite;
+}
+
+.animate-water-drift-alt {
+  animation: waterDrift 15s ease-in-out infinite reverse;
 }

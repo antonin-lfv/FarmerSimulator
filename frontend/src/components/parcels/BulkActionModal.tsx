@@ -1,14 +1,13 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Users } from "lucide-react";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { ResourcePicker } from "@/components/shop/ResourcePicker";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
 import { decodeResourceValue } from "@/lib/utils";
-import type { ActionRequirement, CatalogItem, ResourceMode, Worker } from "@/lib/types";
+import type { ActionRequirement, CatalogItem, ResourceMode } from "@/lib/types";
 
 interface BulkActionModalProps {
   open: boolean;
@@ -17,7 +16,6 @@ interface BulkActionModalProps {
   eligibleCount: number;
   requirements: ActionRequirement[];
   catalog: CatalogItem[];
-  workers: Worker[];
   onRefreshCatalog: () => Promise<void>;
   /** Called after the batch runs so the caller can refresh its parcel list. */
   onDone: () => void;
@@ -30,7 +28,6 @@ export function BulkActionModal({
   eligibleCount,
   requirements,
   catalog,
-  workers,
   onRefreshCatalog,
   onDone,
 }: BulkActionModalProps) {
@@ -47,8 +44,6 @@ export function BulkActionModal({
   }, [open]);
 
   if (!open) return null;
-
-  const freeWorkers = workers.filter((w) => w.available).length;
 
   async function handleConfirm() {
     const resources = requirements.map((req) => {
@@ -68,15 +63,12 @@ export function BulkActionModal({
     try {
       const result = await api.bulkStartAction(actionType, resources);
       const parts = [`${result.started} lancée(s)`];
-      if (result.no_worker > 0) parts.push(`${result.no_worker} en attente d'ouvrier`);
       if (result.failures.length > 0) parts.push(`${result.failures.length} échouée(s)`);
       push({
         tone: result.started > 0 ? "success" : "error",
         title: `Action groupée — ${actionType}`,
         description:
-          parts.join(", ") +
-          (result.failures.length > 0 ? ` (ex : ${result.failures[0].message})` : "") +
-          (result.no_worker > 0 ? " — relancez plus tard pour continuer." : ""),
+          parts.join(", ") + (result.failures.length > 0 ? ` (ex : ${result.failures[0].message})` : ""),
       });
       onDone();
       onClose();
@@ -108,15 +100,11 @@ export function BulkActionModal({
           />
         ))}
 
-        <div className="flex items-start gap-2.5 rounded-lg bg-surface-sunken px-4 py-3 text-sm text-foreground-secondary">
-          <Users size={16} className="mt-0.5 shrink-0 text-foreground-muted" />
-          <p>
-            Un ouvrier ne peut traiter qu&apos;une parcelle à la fois — {freeWorkers} libre
-            {freeWorkers > 1 ? "s" : ""} en ce moment, donc {Math.min(freeWorkers, eligibleCount)} parcelle
-            {Math.min(freeWorkers, eligibleCount) > 1 ? "s" : ""} démarreront tout de suite. Relancez cette action
-            groupée une fois des ouvriers libérés pour traiter le reste.
-          </p>
-        </div>
+        <p className="text-xs text-foreground-muted">
+          Toutes les parcelles concernées démarrent en une fois — seul le matériel possédé peut limiter
+          certaines d&apos;entre elles (ex. un seul tracteur pour plusieurs parcelles) ; celles-ci seront
+          signalées comme échouées, relancez l&apos;action groupée une fois le matériel libéré.
+        </p>
 
         {error && <p className="text-sm text-red-600">{error}</p>}
 

@@ -9,7 +9,7 @@ import { usePolledData } from "@/lib/hooks";
 import { useCalendar } from "@/lib/calendar-context";
 import { api } from "@/lib/api";
 import type { Weather } from "@/lib/types";
-import { cn, GROWING_NEXT_ACTIONS, SURFACE_LABELS } from "@/lib/utils";
+import { cn, isParcelAtRisk, SURFACE_LABELS } from "@/lib/utils";
 import { useToast } from "@/components/ui/ToastProvider";
 
 const SEASON_LABELS: Record<string, string> = {
@@ -60,14 +60,7 @@ export function WeatherCard() {
   const TodayIcon = today ? WEATHER_ICONS[today.weather] : Sun;
   const isDanger = today?.weather === "gel" || today?.weather === "canicule";
 
-  const atRiskParcels = (parcels ?? []).filter(
-    (p) =>
-      p.is_purchased &&
-      p.type_surface !== "entrepôt" &&
-      p.parcel_next_action &&
-      GROWING_NEXT_ACTIONS.has(p.parcel_next_action) &&
-      !p.protected_today,
-  );
+  const atRiskParcels = (parcels ?? []).filter((p) => isParcelAtRisk(p, today?.weather));
 
   async function handleProtect(parcelId: number) {
     setBusyId(parcelId);
@@ -167,14 +160,22 @@ export function WeatherCard() {
       {isDanger && (
         <CardBody className="border-t border-border">
           <div className="flex items-start gap-2 text-sm">
-            <TriangleAlert size={16} className="mt-0.5 shrink-0 text-red-600" />
+            <TriangleAlert
+              size={16}
+              className={cn("mt-0.5 shrink-0", today?.weather === "gel" ? "text-blue-700" : "text-red-600")}
+            />
             <div className="min-w-0 flex-1">
               <div className="flex items-center justify-between gap-3">
                 <p className="font-medium text-foreground">
                   {today?.weather === "gel" ? "Alerte gel" : "Alerte canicule"}
                 </p>
                 {atRiskParcels.length > 1 && (
-                  <Button size="sm" variant="danger" disabled={protectingAll} onClick={handleProtectAll}>
+                  <Button
+                    size="sm"
+                    variant={today?.weather === "gel" ? "cold" : "danger"}
+                    disabled={protectingAll}
+                    onClick={handleProtectAll}
+                  >
                     Protéger toutes ({atRiskParcels.length})
                   </Button>
                 )}

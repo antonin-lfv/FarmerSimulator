@@ -2,7 +2,7 @@ import { cn } from "@/lib/utils";
 import Link from "next/link";
 import type { ButtonHTMLAttributes } from "react";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "cold";
 type Size = "sm" | "md" | "lg";
 
 const variantClasses: Record<Variant, string> = {
@@ -11,6 +11,9 @@ const variantClasses: Record<Variant, string> = {
     "bg-white text-foreground border border-border hover:bg-surface-sunken disabled:text-foreground-muted",
   ghost: "text-foreground-secondary hover:bg-surface-sunken disabled:text-foreground-muted",
   danger: "bg-red-600 text-white hover:bg-red-700 disabled:bg-red-200",
+  // Frost/gel alerts — kept visually distinct from canicule's red so the two
+  // weather dangers don't read as "the same kind of bad".
+  cold: "bg-blue-800 text-white hover:bg-blue-900 disabled:bg-blue-200",
 };
 
 const sizeClasses: Record<Size, string> = {

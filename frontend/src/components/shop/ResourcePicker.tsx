@@ -4,7 +4,7 @@ import { useState } from "react";
 import { ShoppingCart } from "lucide-react";
 import { Select } from "@/components/ui/Select";
 import { BuyItemModal } from "@/components/shop/BuyItemModal";
-import { cn, decodeResourceValue, encodeResourceValue, formatUsd } from "@/lib/utils";
+import { CHAMP_SEED_MARKER, CHAMP_SEED_SUBCATEGORIES, cn, decodeResourceValue, encodeResourceValue, formatUsd } from "@/lib/utils";
 import type { CatalogItem } from "@/lib/types";
 
 // One resource requirement's picker — a plain "own" dropdown plus, for anything
@@ -31,7 +31,14 @@ export function ResourcePicker({
   onRefreshCatalog: () => Promise<void>;
 }) {
   const [buyModalOpen, setBuyModalOpen] = useState(false);
-  const options = catalog.filter((item) => item.subcategory === subcategory);
+  // "graines" is the generic champ seed marker (see action_service.py
+  // CHAMP_SEED_MARKER) — picking "semer" is now a single action, and the
+  // seed variety chosen here is what decides the crop family, so this one
+  // slot must offer items across all three real seed subcategories at once.
+  const options =
+    subcategory === CHAMP_SEED_MARKER
+      ? catalog.filter((item) => CHAMP_SEED_SUBCATEGORIES.includes(item.subcategory))
+      : catalog.filter((item) => item.subcategory === subcategory);
   const canRent = options.some((item) => item.category !== "packs");
   const decoded = decodeResourceValue(value);
   const selectedItem = decoded ? options.find((i) => i.item_id === decoded.itemId) : undefined;
@@ -43,6 +50,23 @@ export function ResourcePicker({
     if (!decoded) onChange(encodeResourceValue(itemId, "own"));
   }
 
+  function renderOption(item: CatalogItem) {
+    return (
+      <option
+        key={`own-${item.item_id}`}
+        value={encodeResourceValue(item.item_id, "own")}
+        disabled={item.available_now === 0}
+      >
+        {item.name}{" "}
+        {item.available_now > 0
+          ? `(disponible x${item.available_now})`
+          : item.amount_owned > 0
+            ? "(déjà utilisé ailleurs)"
+            : "(non possédé)"}
+      </option>
+    );
+  }
+
   return (
     <div>
       <label className="text-sm font-medium text-foreground-secondary">
@@ -50,20 +74,17 @@ export function ResourcePicker({
         <div className="mt-1.5 flex gap-2">
           <Select value={value} onChange={(e) => onChange(e.target.value)} className="flex-1">
             <option value="">Choisir un article</option>
-            {options.map((item) => (
-              <option
-                key={`own-${item.item_id}`}
-                value={encodeResourceValue(item.item_id, "own")}
-                disabled={item.available_now === 0}
-              >
-                {item.name}{" "}
-                {item.available_now > 0
-                  ? `(disponible x${item.available_now})`
-                  : item.amount_owned > 0
-                    ? "(déjà utilisé ailleurs)"
-                    : "(non possédé)"}
-              </option>
-            ))}
+            {subcategory === CHAMP_SEED_MARKER
+              ? CHAMP_SEED_SUBCATEGORIES.map((group) => {
+                  const groupItems = options.filter((item) => item.subcategory === group);
+                  if (groupItems.length === 0) return null;
+                  return (
+                    <optgroup key={group} label={group}>
+                      {groupItems.map(renderOption)}
+                    </optgroup>
+                  );
+                })
+              : options.map(renderOption)}
             {canRent &&
               options
                 .filter((item) => item.category !== "packs" && item.rental_price != null)

@@ -6,6 +6,7 @@ import { api } from "@/lib/api";
 import type { OngoingAction } from "@/lib/types";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 import { CalendarProvider } from "@/lib/calendar-context";
+import { WalletProvider } from "@/lib/wallet-context";
 import { MarketTicker } from "@/components/market/MarketTicker";
 import { Navbar } from "@/components/layout/Navbar";
 
@@ -13,7 +14,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   return (
     <ToastProvider>
       <CalendarProvider>
-        <AppShellInner>{children}</AppShellInner>
+        <WalletProvider>
+          <AppShellInner>{children}</AppShellInner>
+        </WalletProvider>
       </CalendarProvider>
     </ToastProvider>
   );

@@ -29,12 +29,14 @@ class ParcelResponse(BaseModel):
     prix: float
     is_purchased: bool
     parcel_next_action: str | None
+    previous_action: str | None
     yield_health: float
     fertilized: bool
     storage_level: int
     protected_today: bool
     planted_seed_name: str | None
     growth_progress_percent: float | None
+    soil_fertility: float
 
 
 class ParcelDetailResponse(ParcelResponse):
@@ -67,7 +69,6 @@ class ResourceSelection(BaseModel):
 
 class StartActionRequest(BaseModel):
     action_type: str
-    worker_id: int
     resources: list[ResourceSelection]
 
 
@@ -99,7 +100,6 @@ class BulkActionFailure(BaseModel):
 
 class BulkActionResponse(BaseModel):
     started: int
-    no_worker: int
     total_eligible: int
     failures: list[BulkActionFailure]
     balance_usd: float
@@ -109,7 +109,6 @@ class OngoingActionResponse(BaseModel):
     ongoing_action_id: int
     parcel_id: int
     action_type: str
-    worker_name: str
     progress_percent: float
     remaining_minutes: float
     cost: float
@@ -177,26 +176,6 @@ class SellHarvestRequest(BaseModel):
     quantity: int
 
 
-class WorkerResponse(BaseModel):
-    worker_id: int
-    worker_name: str
-    worker_price: float
-    available: bool
-    status: str
-    remaining_minutes: float
-
-
-class HireWorkerResponse(BaseModel):
-    success: bool
-    message: str
-    worker: WorkerResponse | None = None
-
-
-class FireWorkerResponse(BaseModel):
-    success: bool
-    message: str
-
-
 class CheatResponse(BaseModel):
     balance_usd: float
 
@@ -245,6 +224,33 @@ class CalendarResponse(BaseModel):
     growth_multiplier: float
     seconds_until_next_day: float = 0.0
     day_duration_seconds: float = 0.0
+
+
+class TransactionResponse(BaseModel):
+    transaction_id: int
+    created_at: float
+    game_day: int
+    date_label: str
+    category: str
+    label: str
+    amount: float
+    balance_after: float
+    item_name: str | None = None
+    quantity: int | None = None
+    unit_price: float | None = None
+    is_invoice: bool
+    invoice_number: str | None = None
+
+
+class ActionHistoryResponse(BaseModel):
+    action_history_id: int
+    parcel_id: int
+    action_type: str
+    start_time: float
+    end_time: float
+    duration_minutes: float
+    superficie: float
+    cost: float
 
 
 class NotificationResponse(BaseModel):

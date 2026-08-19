@@ -12,12 +12,14 @@ export interface Parcel {
   prix: number;
   is_purchased: boolean;
   parcel_next_action: string | null;
+  previous_action: string | null;
   yield_health: number;
   fertilized: boolean;
   storage_level: number;
   protected_today: boolean;
   planted_seed_name: string | null;
   growth_progress_percent: number | null;
+  soil_fertility: number;
 }
 
 export interface ActionRequirement {
@@ -51,7 +53,6 @@ export interface OngoingAction {
   ongoing_action_id: number;
   parcel_id: number;
   action_type: string;
-  worker_name: string;
   progress_percent: number;
   remaining_minutes: number;
   cost: number;
@@ -115,21 +116,6 @@ export interface MarketPricePoint {
   timestamp: number;
 }
 
-export interface Worker {
-  worker_id: number;
-  worker_name: string;
-  worker_price: number;
-  available: boolean;
-  status: string;
-  remaining_minutes: number;
-}
-
-export interface HireWorkerResponse {
-  success: boolean;
-  message: string;
-  worker: Worker | null;
-}
-
 export interface Storage {
   used: number;
   capacity: number;
@@ -177,7 +163,6 @@ export interface BulkActionFailure {
 
 export interface BulkActionResponse {
   started: number;
-  no_worker: number;
   total_eligible: number;
   failures: BulkActionFailure[];
   balance_usd: number;
@@ -216,4 +201,31 @@ export interface NotificationSettings {
   gel_alerts: boolean;
   canicule_alerts: boolean;
   bank_alerts: boolean;
+}
+
+export interface Transaction {
+  transaction_id: number;
+  created_at: number;
+  game_day: number;
+  date_label: string;
+  category: string;
+  label: string;
+  amount: number;
+  balance_after: number;
+  item_name: string | null;
+  quantity: number | null;
+  unit_price: number | null;
+  is_invoice: boolean;
+  invoice_number: string | null;
+}
+
+export interface ActionHistoryEntry {
+  action_history_id: number;
+  parcel_id: number;
+  action_type: string;
+  start_time: number;
+  end_time: number;
+  duration_minutes: number;
+  superficie: number;
+  cost: number;
 }

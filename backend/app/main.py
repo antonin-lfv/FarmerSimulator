@@ -16,8 +16,8 @@ from app.routers import (
     notifications,
     parcels,
     storage,
+    transactions,
     wallet,
-    workers,
 )
 from app.scheduler import start_scheduler
 from app.seed import seed_if_empty
@@ -55,8 +55,8 @@ app.include_router(actions.router)
 app.include_router(catalog.router)
 app.include_router(inventory.router)
 app.include_router(market.router)
-app.include_router(workers.router)
 app.include_router(bank.router)
 app.include_router(storage.router)
 app.include_router(calendar.router)
 app.include_router(notifications.router)
+app.include_router(transactions.router)

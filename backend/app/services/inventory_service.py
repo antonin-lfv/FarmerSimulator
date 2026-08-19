@@ -44,6 +44,14 @@ def sell_item(db: Session, item_id: int, quantity: int) -> tuple[bool, str, floa
         return False, "Quantité possédée insuffisante pour cette vente.", wallet_service.get_balance(db)
 
     row.amount -= quantity
-    balance = wallet_service.credit(db, item.price * quantity)
+    balance = wallet_service.credit(
+        db,
+        item.price * quantity,
+        "vente_materiel",
+        f"Vente — {item.name} ×{quantity}",
+        item_name=item.name,
+        quantity=quantity,
+        unit_price=item.price,
+    )
     db.commit()
     return True, "Vente effectuée.", balance

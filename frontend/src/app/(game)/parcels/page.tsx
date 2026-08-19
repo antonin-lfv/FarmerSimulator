@@ -9,64 +9,40 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { Modal } from "@/components/ui/Modal";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { FarmManager } from "@/components/map/FarmManager";
-import { BulkActionModal } from "@/components/parcels/BulkActionModal";
+import { ActionGroupsCard } from "@/components/parcels/ActionGroupsCard";
 import { usePolledData, useMutationRefresh } from "@/lib/hooks";
 import { useCalendar } from "@/lib/calendar-context";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
-import { formatDuration, GROWING_NEXT_ACTIONS, SURFACE_LABELS } from "@/lib/utils";
-import type { ActionRequirement } from "@/lib/types";
-
-interface ActionGroup {
-  actionType: string;
-  count: number;
-  /** Any one matching parcel_id, used to fetch that action's requirements. */
-  sampleParcelId: number;
-}
+import { formatDuration, isParcelAtRisk, SURFACE_LABELS } from "@/lib/utils";
+import type { Parcel } from "@/lib/types";
 
 export default function ParcelsPage() {
   const [openParcelId, setOpenParcelId] = useState<number | null>(null);
   const [protecting, setProtecting] = useState(false);
-  const [bulkGroup, setBulkGroup] = useState<ActionGroup | null>(null);
-  const [bulkRequirements, setBulkRequirements] = useState<ActionRequirement[] | null>(null);
   const push = useToast();
 
   const { data: parcels, refresh: refreshParcels } = usePolledData(() => api.getParcels(), 8000);
   const { data: ongoingActions, refresh: refreshActions } = usePolledData(() => api.getOngoingActions(), 2000);
-  const { data: workers } = usePolledData(() => api.getWorkers(), 15000);
   const { data: catalog, refresh: refreshCatalog } = usePolledData(() => api.getCatalog(), 10000);
   const { calendar } = useCalendar();
   useMutationRefresh(refreshParcels);
   useMutationRefresh(refreshActions);
 
-  const owned = (parcels ?? []).filter((p) => p.is_purchased).sort((a, b) => a.parcel_id - b.parcel_id);
   const actionByParcel = new Map((ongoingActions ?? []).map((a) => [a.parcel_id, a]));
-
-  const isDangerWeather = calendar?.weather === "gel" || calendar?.weather === "canicule";
-  const atRisk = owned.filter(
-    (p) =>
-      p.type_surface !== "entrepôt" &&
-      p.parcel_next_action != null &&
-      GROWING_NEXT_ACTIONS.has(p.parcel_next_action) &&
-      !p.protected_today &&
-      isDangerWeather,
-  );
-
-  const groupMap = new Map<string, ActionGroup>();
-  for (const parcel of owned) {
-    if (!parcel.parcel_next_action || actionByParcel.has(parcel.parcel_id)) continue;
-    const existing = groupMap.get(parcel.parcel_next_action);
-    if (existing) {
-      existing.count += 1;
-    } else {
-      groupMap.set(parcel.parcel_next_action, {
-        actionType: parcel.parcel_next_action,
-        count: 1,
-        sampleParcelId: parcel.parcel_id,
-      });
-    }
+  // Ready-to-act parcels float to the top, then busy ones, then idle/no next
+  // step — with 50+ parcels on a full farm, what needs attention should be
+  // visible without scrolling past everything else first.
+  function rowPriority(p: Parcel) {
+    if (!actionByParcel.has(p.parcel_id) && p.parcel_next_action) return 0;
+    if (actionByParcel.has(p.parcel_id)) return 1;
+    return 2;
   }
-  const groups = [...groupMap.values()].sort((a, b) => b.count - a.count);
+  const owned = (parcels ?? [])
+    .filter((p) => p.is_purchased)
+    .sort((a, b) => rowPriority(a) - rowPriority(b) || a.parcel_id - b.parcel_id);
+
+  const atRisk = owned.filter((p) => isParcelAtRisk(p, calendar?.weather));
 
   async function handleProtectAll() {
     setProtecting(true);
@@ -83,12 +59,6 @@ export default function ParcelsPage() {
     }
   }
 
-  async function openBulkModal(group: ActionGroup) {
-    setBulkGroup(group);
-    const detail = await api.getParcel(group.sampleParcelId);
-    setBulkRequirements(detail.possible_actions[0]?.requirements ?? []);
-  }
-
   return (
     <div className="mx-auto flex max-w-6xl flex-col gap-6">
       <div>
@@ -103,7 +73,7 @@ export default function ParcelsPage() {
           <CardTitle className="flex items-center gap-1.5">
             <Layers size={16} className="text-brand-700" />
             Actions groupées
-            <InfoTip text="Applique une même action (protection, semis, engrais, récolte...) à toutes les parcelles concernées en un clic, plutôt qu'une par une. Limité par le nombre d'ouvriers libres — relancez plus tard pour traiter le reste." />
+            <InfoTip text="Applique une même action (protection, semis, engrais, récolte...) à toutes les parcelles concernées en un clic, plutôt qu'une par une. Seul le matériel disponible (véhicules, accessoires) peut limiter certaines parcelles — celles-ci seront signalées, relancez l'action groupée une fois le matériel libéré." />
           </CardTitle>
         </CardHeader>
         <CardBody className="flex flex-col gap-4">
@@ -125,28 +95,16 @@ export default function ParcelsPage() {
             </div>
           )}
 
-          {groups.length === 0 ? (
-            <p className="text-sm text-foreground-muted">
-              Aucune action groupée disponible pour le moment — toutes vos parcelles sont soit en cours
-              d&apos;action, soit sans étape suivante.
-            </p>
-          ) : (
-            <div className="flex flex-col divide-y divide-border">
-              {groups.map((group) => (
-                <div key={group.actionType} className="flex items-center justify-between gap-4 py-3">
-                  <div>
-                    <p className="font-medium capitalize text-foreground">{group.actionType}</p>
-                    <p className="text-xs text-foreground-muted">
-                      {group.count} parcelle{group.count > 1 ? "s" : ""} prête{group.count > 1 ? "s" : ""}
-                    </p>
-                  </div>
-                  <Button size="sm" variant="secondary" onClick={() => openBulkModal(group)}>
-                    Lancer sur toutes
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
+          <ActionGroupsCard
+            parcels={parcels ?? []}
+            ongoingActions={ongoingActions ?? []}
+            catalog={catalog ?? []}
+            onRefreshCatalog={refreshCatalog}
+            onDone={() => {
+              refreshParcels();
+              refreshActions();
+            }}
+          />
         </CardBody>
       </Card>
 
@@ -164,6 +122,12 @@ export default function ParcelsPage() {
                 <th className="px-5 py-3">Parcelle</th>
                 <th className="px-5 py-3">Type</th>
                 <th className="px-5 py-3">Superficie</th>
+                <th className="px-5 py-3">
+                  <span className="flex items-center gap-1">
+                    Sol
+                    <InfoTip text="Fertilité du champ — baisse si vous replantez la même famille de culture deux cycles de suite, remonte si vous alternez. Ne s'applique qu'aux champs." />
+                  </span>
+                </th>
                 <th className="px-5 py-3">Statut</th>
                 <th className="px-5 py-3" />
               </tr>
@@ -178,6 +142,23 @@ export default function ParcelsPage() {
                       {SURFACE_LABELS[parcel.type_surface] ?? parcel.type_surface}
                     </td>
                     <td className="px-5 py-3 text-foreground-secondary">{parcel.superficie} ha</td>
+                    <td className="px-5 py-3">
+                      {parcel.type_surface === "champ" ? (
+                        <span
+                          className={
+                            parcel.soil_fertility < 50
+                              ? "text-red-600"
+                              : parcel.soil_fertility < 100
+                                ? "text-amber-600"
+                                : "text-brand-700"
+                          }
+                        >
+                          {Math.round(parcel.soil_fertility)}%
+                        </span>
+                      ) : (
+                        <span className="text-foreground-muted">—</span>
+                      )}
+                    </td>
                     <td className="px-5 py-3">
                       {action ? (
                         <div className="flex items-center gap-3">
@@ -217,26 +198,6 @@ export default function ParcelsPage() {
       >
         {openParcelId != null && <FarmManager initialParcelId={openParcelId} />}
       </Modal>
-
-      {bulkGroup && bulkRequirements && (
-        <BulkActionModal
-          open
-          onClose={() => {
-            setBulkGroup(null);
-            setBulkRequirements(null);
-          }}
-          actionType={bulkGroup.actionType}
-          eligibleCount={bulkGroup.count}
-          requirements={bulkRequirements}
-          catalog={catalog ?? []}
-          workers={workers ?? []}
-          onRefreshCatalog={refreshCatalog}
-          onDone={() => {
-            refreshParcels();
-            refreshActions();
-          }}
-        />
-      )}
     </div>
   );
 }

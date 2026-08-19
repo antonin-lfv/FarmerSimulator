@@ -6,7 +6,12 @@ from app.config import settings
 from app.models import Action, ActionRequirement, Catalog
 from app.seed_traits import SeedTraits, get_traits
 from app.services import catalog_service
-from app.services.action_service import EQUIPMENT_DURATION_MULTIPLIER, SEED_SUBCATEGORIES
+from app.services.action_service import (
+    CHAMP_SEED_MARKER,
+    CHAMP_SEED_SUBCATEGORIES,
+    PLANTABLE_ITEM_SUBCATEGORIES,
+    equipment_duration_multiplier,
+)
 
 
 def _growth_label(mult: float) -> str:
@@ -46,10 +51,17 @@ def _best_period(traits: SeedTraits) -> str:
 
 
 def _usage_lines(db: Session, item: Catalog) -> list[str]:
+    # A champ seed's own requirement row stores CHAMP_SEED_MARKER ("graines"),
+    # not the item's real subcategory ("graines céréales"/etc) — match both so
+    # "used in these actions" still finds the (now-generic) "semer" action.
+    matching_subcategories = [item.subcategory]
+    if item.subcategory in CHAMP_SEED_SUBCATEGORIES:
+        matching_subcategories.append(CHAMP_SEED_MARKER)
+
     action_ids = (
         db.execute(
             select(ActionRequirement.action_id)
-            .where(ActionRequirement.subcategory == item.subcategory)
+            .where(ActionRequirement.subcategory.in_(matching_subcategories))
             .distinct()
         )
         .scalars()
@@ -65,7 +77,7 @@ def _usage_lines(db: Session, item: Catalog) -> list[str]:
             db.execute(
                 select(ActionRequirement.subcategory).where(
                     ActionRequirement.action_id == action_id,
-                    ActionRequirement.subcategory != item.subcategory,
+                    ActionRequirement.subcategory.notin_(matching_subcategories),
                 )
             )
             .scalars()
@@ -92,15 +104,16 @@ def get_detail(db: Session, item_id: int) -> dict | None:
             {"label": "Coût de location", "value": f"{item.price * settings.rental_fee_rate:,.0f}$ par utilisation"}
         )
 
-    if item.item_id in EQUIPMENT_DURATION_MULTIPLIER:
-        mult = EQUIPMENT_DURATION_MULTIPLIER[item.item_id]
+    if item.category in ("vehicules", "accessoires"):
+        mult = equipment_duration_multiplier(db, item.category, item.subcategory, item.price)
         pct = round((1 - mult) * 100)
-        specs.append(
-            {
-                "label": "Vitesse d'exécution",
-                "value": f"{'+' if pct > 0 else ''}{pct}% par rapport au modèle standard" if pct != 0 else "Standard",
-            }
-        )
+        if pct != 0:
+            specs.append(
+                {
+                    "label": "Vitesse d'exécution",
+                    "value": f"{'+' if pct > 0 else ''}{pct}% par rapport aux autres modèles de sa catégorie",
+                }
+            )
 
     if item.item_id in (42, 43):
         specs.append(
@@ -110,7 +123,7 @@ def get_detail(db: Session, item_id: int) -> dict | None:
             }
         )
 
-    if item.category == "packs" and item.subcategory in SEED_SUBCATEGORIES:
+    if item.category == "packs" and item.subcategory in PLANTABLE_ITEM_SUBCATEGORIES:
         traits = get_traits(item.item_id)
         specs.append({"label": "Vitesse de croissance", "value": _growth_label(traits.growth_multiplier)})
         specs.append({"label": "Résistance au gel", "value": _resistance_label(traits.frost_resistance)})

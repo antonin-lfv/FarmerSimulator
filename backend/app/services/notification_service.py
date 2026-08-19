@@ -87,7 +87,9 @@ def list_recent(db: Session, current_day: int) -> list[dict]:
 
 
 def unread_count(db: Session, current_day: int) -> int:
-    _purge_old(db, current_day)
+    # No _purge_old here: list_recent (always called first by the /notifications
+    # route) already purges for this request — a second purge+commit here was
+    # pure waste on every poll.
     rows = db.execute(select(Notification).where(Notification.read.is_(False))).scalars().all()
     return len(rows)
 

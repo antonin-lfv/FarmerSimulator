@@ -58,11 +58,10 @@ def borrow(db: Session, amount: float, current_day: int) -> tuple[bool, str, dic
         monthly_payment=round(payment, 2),
         term_months=settings.loan_term_months,
         taken_at=time.time(),
-        taken_at_day=current_day,
         next_payment_day=current_day + settings.days_per_month,
     )
     db.add(loan)
-    balance = wallet_service.credit(db, amount)
+    balance = wallet_service.credit(db, amount, "pret_octroi", f"Prêt bancaire accordé ({settings.loan_term_months} mois)")
     db.commit()
     db.refresh(loan)
     notification_service.create(
@@ -76,7 +75,7 @@ def repay_full(db: Session) -> tuple[bool, str, float]:
     if loan is None:
         return False, "Aucun prêt actif.", wallet_service.get_balance(db)
 
-    if not wallet_service.debit(db, loan.balance_owed):
+    if not wallet_service.debit(db, loan.balance_owed, "pret_remboursement", "Remboursement intégral du prêt"):
         return False, "Solde insuffisant.", wallet_service.get_balance(db)
 
     db.delete(loan)
@@ -101,7 +100,7 @@ def process_day(db: Session, day: int) -> None:
     principal_portion = loan.monthly_payment - interest_portion
     payment = min(loan.monthly_payment, loan.balance_owed + interest_portion)
 
-    if wallet_service.debit(db, payment):
+    if wallet_service.debit(db, payment, "pret_remboursement", "Mensualité de prêt"):
         loan.balance_owed = max(0.0, loan.balance_owed - principal_portion)
         notification_service.create(db, "bank", f"Mensualité de {payment:,.0f}$ prélevée.", day)
     else:

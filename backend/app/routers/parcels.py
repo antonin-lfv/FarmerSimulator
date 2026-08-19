@@ -83,7 +83,6 @@ def start_action(
         db,
         parcel,
         request.action_type,
-        request.worker_id,
         [res.model_dump() for res in request.resources],
     )
     return StartActionResponse(

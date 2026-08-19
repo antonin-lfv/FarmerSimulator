@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { Tractor, Sprout, Wheat, TreePine, Grape, type LucideIcon } from "lucide-react";
-import type { ResourceMode } from "./types";
+import type { ResourceMode, CatalogItem, OngoingAction, Parcel, Weather } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -31,12 +31,35 @@ export const SURFACE_LABELS: Record<string, string> = {
   entrepôt: "Entrepôt",
 };
 
-export const SURFACE_COLORS: Record<string, string> = {
-  champ: "#8ccb93",
-  forêt: "#2c7838",
-  vigne: "#c99a3b",
-  entrepôt: "#8a8577",
-};
+export interface ActionGroup {
+  actionType: string;
+  count: number;
+  /** Any one matching parcel_id, used to fetch that action's requirements. */
+  sampleParcelId: number;
+}
+
+// Every owned, idle (no ongoing action), actionable parcel, clustered by its
+// next_action — the "what needs doing across the whole farm" view. Used by
+// both /parcels (full table) and the dashboard's compact to-do widget, so a
+// 54-parcel farm never needs a parcel-by-parcel scroll to see what's pending.
+export function groupPendingActions(parcels: Parcel[], ongoingActions: OngoingAction[]): ActionGroup[] {
+  const busyParcelIds = new Set(ongoingActions.map((a) => a.parcel_id));
+  const groupMap = new Map<string, ActionGroup>();
+  for (const parcel of parcels) {
+    if (!parcel.is_purchased || !parcel.parcel_next_action || busyParcelIds.has(parcel.parcel_id)) continue;
+    const existing = groupMap.get(parcel.parcel_next_action);
+    if (existing) {
+      existing.count += 1;
+    } else {
+      groupMap.set(parcel.parcel_next_action, {
+        actionType: parcel.parcel_next_action,
+        count: 1,
+        sampleParcelId: parcel.parcel_id,
+      });
+    }
+  }
+  return [...groupMap.values()].sort((a, b) => b.count - a.count);
+}
 
 // Mirrors backend calendar_service.GROWING_NEXT_ACTIONS — a parcel is at risk
 // from frost/heatwave damage while its next action falls in this set (crop
@@ -47,6 +70,77 @@ export const GROWING_NEXT_ACTIONS = new Set([
   "mettre engrais patates", "récolter patates",
   "recolter raisins", "couper le bois",
 ]);
+
+// A parcel is exposed to today's frost/heatwave damage: owned, growing (not
+// an entrepôt, not idle/empty), and not already protected for today. Used to
+// be reimplemented slightly differently in FarmMap/ParcelPanel/WeatherCard/
+// the parcels page — one definition now so the four can't drift apart.
+export function isParcelAtRisk(parcel: Parcel, weather: Weather | undefined): boolean {
+  return (
+    parcel.is_purchased &&
+    parcel.type_surface !== "entrepôt" &&
+    !!parcel.parcel_next_action &&
+    GROWING_NEXT_ACTIONS.has(parcel.parcel_next_action) &&
+    !parcel.protected_today &&
+    (weather === "gel" || weather === "canicule")
+  );
+}
+
+// Mirrors backend config.settings.labor_rate_usd — a flat cost charged per
+// action_time_minutes, no worker roster/availability concept to account for.
+export const LABOR_RATE_USD = 50;
+
+// Mirrors backend action_service.CHAMP_SEED_MARKER / CHAMP_SEED_SUBCATEGORIES
+// — the generic "semer" action's seed requirement stores this pseudo-
+// subcategory instead of one specific crop family's real one, so a resource
+// picker for it must offer items from all three families at once.
+export const CHAMP_SEED_MARKER = "graines";
+export const CHAMP_SEED_SUBCATEGORIES = ["graines céréales", "graines coton", "graines patates"];
+
+// Mirrors backend action_service.equipment_duration_multiplier — a vehicule/
+// accessoire's speed is its price ranked against siblings of the same
+// subcategory (cheapest = slowest, priciest = fastest). Kept in sync with the
+// backend constants so the pre-launch preview (time + cost below) matches
+// what start_action will actually charge/take once the action begins.
+const EQUIPMENT_SPEED_SLOWEST_MULTIPLIER = 1.15;
+const EQUIPMENT_SPEED_FASTEST_MULTIPLIER = 0.8;
+
+// Mirrors backend transaction categories written by wallet_service call
+// sites across catalog/inventory/market/action/parcel/loan services — kept
+// here so the ledger UI (/invoices) and any future consumer share one
+// French label set instead of each re-guessing category -> label.
+export const TRANSACTION_CATEGORY_LABELS: Record<string, string> = {
+  achat_materiel: "Achat de matériel",
+  achat_consommable: "Achat de consommables",
+  achat_parcelle: "Achat de parcelle",
+  vente_recolte: "Vente de récolte",
+  vente_materiel: "Vente de matériel",
+  cout_action: "Coût d'activité",
+  amelioration_stockage: "Amélioration de stockage",
+  protection: "Protection météo",
+  pret_octroi: "Prêt accordé",
+  pret_remboursement: "Remboursement de prêt",
+  triche: "Ajustement (debug)",
+  autre: "Autre",
+};
+
+export function equipmentDurationMultiplier(
+  catalog: CatalogItem[],
+  category: string,
+  subcategory: string,
+  price: number
+) {
+  if (category !== "vehicules" && category !== "accessoires") return 1;
+  const prices = catalog
+    .filter((i) => i.category === category && i.subcategory === subcategory)
+    .map((i) => i.price);
+  if (prices.length <= 1) return 1;
+  const lo = Math.min(...prices);
+  const hi = Math.max(...prices);
+  if (hi === lo) return 1;
+  const t = (price - lo) / (hi - lo);
+  return EQUIPMENT_SPEED_SLOWEST_MULTIPLIER + (EQUIPMENT_SPEED_FASTEST_MULTIPLIER - EQUIPMENT_SPEED_SLOWEST_MULTIPLIER) * t;
+}
 
 // A resource <select> needs one string value per option that round-trips both
 // which catalog item was picked and whether it's owned or rented — used by

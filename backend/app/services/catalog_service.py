@@ -5,7 +5,7 @@ from sqlalchemy import func, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Accessory, Catalog, OngoingAction, Pack, UsedVehicle, Vehicule
+from app.models import Accessory, Catalog, OngoingAction, Pack, UsedAccessory, UsedVehicle, Vehicule
 from app.services import storage_service, wallet_service
 
 OWNERSHIP_MODELS = {
@@ -35,6 +35,16 @@ def owned_amount(db: Session, item_id: int, category: str) -> int:
     return row.amount if row else 0
 
 
+def _used_counts(db: Session, model, current_time: float) -> dict[int, int]:
+    rows = db.execute(
+        select(model.item_id, func.count())
+        .join(OngoingAction, model.ongoing_action_id == OngoingAction.ongoing_action_id)
+        .where(OngoingAction.end_time > current_time)
+        .group_by(model.item_id)
+    ).all()
+    return dict(rows)
+
+
 def list_catalog(
     db: Session, category: str | None = None, subcategory: str | None = None
 ) -> list[dict]:
@@ -46,29 +56,46 @@ def list_catalog(
     query = query.order_by(Catalog.category, Catalog.subcategory, Catalog.price)
 
     items = db.execute(query).scalars().all()
-    return [
-        {
-            "item_id": item.item_id,
-            "category": item.category,
-            "subcategory": item.subcategory,
-            "name": item.name,
-            "price": item.price,
-            "promotion": item.promotion,
-            "img_path": item.img_path,
-            "amount_owned": owned_amount(db, item.item_id, item.category),
-            "available_now": (
-                get_available_vehicle_count(db, item.item_id)
-                if item.category == "vehicules"
-                else owned_amount(db, item.item_id, item.category)
-            ),
-            "rental_price": (
-                item.price * settings.rental_fee_rate
-                if item.category in ("vehicules", "accessoires")
-                else None
-            ),
-        }
-        for item in items
-    ]
+
+    # Batched instead of 1-2 queries per item (this endpoint is polled every
+    # ~10s from two components) — one ownership query per category, one
+    # grouped "currently in use" query for each of vehicules/accessoires.
+    owned_by_category = {
+        cat: dict(db.execute(select(model.item_id, model.amount)).all())
+        for cat, model in OWNERSHIP_MODELS.items()
+    }
+    current_time = time.time()
+    used_vehicles = _used_counts(db, UsedVehicle, current_time)
+    used_accessories = _used_counts(db, UsedAccessory, current_time)
+
+    result = []
+    for item in items:
+        owned = owned_by_category.get(item.category, {}).get(item.item_id, 0)
+        if item.category == "vehicules":
+            available_now = max(0, owned - used_vehicles.get(item.item_id, 0))
+        elif item.category == "accessoires":
+            available_now = max(0, owned - used_accessories.get(item.item_id, 0))
+        else:
+            available_now = owned
+        result.append(
+            {
+                "item_id": item.item_id,
+                "category": item.category,
+                "subcategory": item.subcategory,
+                "name": item.name,
+                "price": item.price,
+                "promotion": item.promotion,
+                "img_path": item.img_path,
+                "amount_owned": owned,
+                "available_now": available_now,
+                "rental_price": (
+                    item.price * settings.rental_fee_rate
+                    if item.category in ("vehicules", "accessoires")
+                    else None
+                ),
+            }
+        )
+    return result
 
 
 def list_categories(db: Session) -> list[str]:
@@ -96,8 +123,23 @@ def buy_item(db: Session, item_id: int, quantity: int) -> tuple[bool, str, float
             wallet_service.get_balance(db),
         )
 
-    total_price = item.price * (1 - item.promotion) * quantity
-    if not wallet_service.debit(db, total_price):
+    unit_price = item.price * (1 - item.promotion)
+    total_price = unit_price * quantity
+    # A tractor or other heavy equipment purchase is a real capital expense —
+    # gets a proper invoice number and itemized facture, not just a ledger
+    # line, once it crosses the threshold (vehicules/accessoires, matching
+    # the "big machine" case the itemized view exists for).
+    invoice_worthy = item.category in ("vehicules", "accessoires") and total_price >= settings.invoice_threshold_usd
+    if not wallet_service.debit(
+        db,
+        total_price,
+        "achat_materiel" if item.category in ("vehicules", "accessoires") else "achat_consommable",
+        f"Achat — {item.name} ×{quantity}",
+        item_name=item.name,
+        quantity=quantity,
+        unit_price=unit_price,
+        invoice=invoice_worthy,
+    ):
         return False, "Solde insuffisant.", wallet_service.get_balance(db)
 
     model = OWNERSHIP_MODELS.get(item.category)
@@ -134,3 +176,28 @@ def get_available_vehicle_count(db: Session, item_id: int) -> int:
 
 def check_vehicle_availability(db: Session, item_id: int, quantity_needed: int = 1) -> bool:
     return get_available_vehicle_count(db, item_id) >= quantity_needed
+
+
+def get_available_accessory_count(db: Session, item_id: int) -> int:
+    # Mirrors get_available_vehicle_count: an accessoire in active use on an
+    # ongoing action isn't free for a second one to pick up simultaneously,
+    # same reservation model as vehicules (see UsedAccessory).
+    accessory = db.execute(
+        select(Accessory).where(Accessory.item_id == item_id)
+    ).scalar_one_or_none()
+    if accessory is None:
+        return 0
+
+    current_time = time.time()
+    currently_used = db.execute(
+        select(func.count())
+        .select_from(UsedAccessory)
+        .join(OngoingAction, UsedAccessory.ongoing_action_id == OngoingAction.ongoing_action_id)
+        .where(UsedAccessory.item_id == item_id, OngoingAction.end_time > current_time)
+    ).scalar_one()
+
+    return max(0, accessory.amount - currently_used)
+
+
+def check_accessory_availability(db: Session, item_id: int, quantity_needed: int = 1) -> bool:
+    return get_available_accessory_count(db, item_id) >= quantity_needed

@@ -24,9 +24,10 @@ services:
       # duration, so the full action pipeline can be tested quickly. Remove
       # (or leave unset) to restore real action durations.
       DEBUG_ACTION_SECONDS: ${DEBUG_ACTION_SECONDS:-5}
-      # Debug: 1 in-game month = this many real seconds (default 5 minutes).
+      # Debug: 1 in-game month = this many real seconds (default 30 minutes —
+      # doubled again from 900s/15min, still too fast to keep up with).
       # Real-world pacing is 1 month = 1 week (604800s) — unset to restore it.
-      GAME_MONTH_SECONDS: ${GAME_MONTH_SECONDS:-300}
+      GAME_MONTH_SECONDS: ${GAME_MONTH_SECONDS:-1800}
     ports:
       - "8000:8000"
     depends_on:

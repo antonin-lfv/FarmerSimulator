@@ -197,6 +197,14 @@ def sell_harvest(db: Session, item_id: int, quantity: int) -> tuple[bool, str, f
         return False, "Aucun prix de marché disponible.", wallet_service.get_balance(db)
 
     pack.amount -= quantity
-    balance = wallet_service.credit(db, price_row.price * quantity)
+    balance = wallet_service.credit(
+        db,
+        price_row.price * quantity,
+        "vente_recolte",
+        f"Vente au marché — {catalog_item.name} ×{quantity}",
+        item_name=catalog_item.name,
+        quantity=quantity,
+        unit_price=price_row.price,
+    )
     db.commit()
     return True, "Récolte vendue.", balance

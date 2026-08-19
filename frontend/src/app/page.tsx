@@ -15,7 +15,7 @@ const FEATURES = [
     icon: Timer,
     title: "Actions en temps réel",
     description:
-      "Labourer, semer, fertiliser, récolter : chaque action prend du temps réel et mobilise vos ouvriers et véhicules.",
+      "Labourer, semer, fertiliser, récolter : chaque action prend du temps réel et mobilise votre matériel.",
   },
   {
     icon: LineChart,

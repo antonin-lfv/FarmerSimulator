@@ -89,5 +89,28 @@ class Settings:
     # sell/require half a pack).
     pack_hectares_per_unit: float = 5.0
 
+    # A vehicule/accessoire purchase at or above this price gets a numbered
+    # invoice (facture) instead of a plain ledger line — a €100k tractor is a
+    # real capital expense, a €4,200 attachment is not.
+    invoice_threshold_usd: float = 10_000.0
+
+    # Crop rotation (champ parcels): replanting the same family loses this
+    # many soil_fertility points, alternating families gains this many —
+    # see action_service.start_action. Deliberately asymmetric (losing is
+    # faster than recovering) so monoculture has a real, felt cost.
+    soil_fertility_penalty: float = 20.0
+    soil_fertility_bonus: float = 10.0
+    # Harvest yield at 0% fertility vs. 100% — a tired field still produces
+    # something, just half as much, not a hard wall.
+    soil_fertility_min_yield_multiplier: float = 0.5
+
+    # Flat labor cost, charged per action_time_minutes (same unit/magnitude as
+    # the old per-worker roster's rates, ~30-80 — kept the average so removing
+    # the hire/fire roster doesn't shift the game's cost balance). There's no
+    # concept of "how many workers you own" anymore: any number of actions can
+    # run in parallel across different parcels, each simply paying this rate
+    # for its own duration.
+    labor_rate_usd: float = 50.0
+
 
 settings = Settings()

@@ -75,6 +75,11 @@ export function BuyItemModal({
         push({ tone: "error", title: `Achat impossible — ${item.name}`, description: result.message });
         return;
       }
+      push({
+        tone: "success",
+        title: `Achat confirmé — ${item.name}`,
+        description: `${quantity} × ${formatUsd(item.price)} = ${formatUsd(total)}`,
+      });
       onBought(item.item_id);
       onClose();
     } finally {

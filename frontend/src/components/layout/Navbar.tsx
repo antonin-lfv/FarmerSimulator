@@ -1,14 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useRef } from "react";
 import { usePathname } from "next/navigation";
 import { Sprout, ShoppingBag, Package, LineChart, Wallet, Warehouse } from "lucide-react";
-import { cn, formatUsd } from "@/lib/utils";
+import { cn } from "@/lib/utils";
 import { usePolledData, useMutationRefresh } from "@/lib/hooks";
 import { api } from "@/lib/api";
+import { useWallet } from "@/lib/wallet-context";
 import { NavTimeWeather } from "@/components/layout/NavTimeWeather";
 import { NavNotificationBell } from "@/components/layout/NavNotificationBell";
 import { NavBurgerMenu } from "@/components/layout/NavBurgerMenu";
+import { AnimatedNumber } from "@/components/ui/AnimatedNumber";
 
 const NAV_ICONS = [
   { href: "/shop", label: "Boutique", title: "Boutique", icon: ShoppingBag },
@@ -18,10 +21,16 @@ const NAV_ICONS = [
 
 export function Navbar() {
   const pathname = usePathname();
-  const { data: wallet, refresh: refreshWallet } = usePolledData(() => api.getWallet(), 5000);
+  const { wallet, previousBalance } = useWallet();
   const { data: storage, refresh: refreshStorage } = usePolledData(() => api.getStorage(), 10000);
-  useMutationRefresh(refreshWallet);
   useMutationRefresh(refreshStorage);
+
+  const previousUsedRef = useRef<number | null>(null);
+  const lastSeenUsedRef = useRef<number | null>(null);
+  if (storage && storage.used !== lastSeenUsedRef.current) {
+    previousUsedRef.current = lastSeenUsedRef.current;
+    lastSeenUsedRef.current = storage.used;
+  }
 
   return (
     <header className="fixed inset-x-0 top-0 z-30 flex h-20 shrink-0 items-center gap-4 border-b border-brand-800 bg-brand-900 px-5 md:px-8">
@@ -63,7 +72,11 @@ export function Navbar() {
           title="Trésorerie"
         >
           <Wallet size={16} className="text-brand-200" />
-          {wallet ? formatUsd(wallet.balance_usd) : "…"}
+          {wallet ? (
+            <AnimatedNumber value={wallet.balance_usd} previousValue={previousBalance} format="usd" />
+          ) : (
+            "…"
+          )}
         </div>
 
         <div
@@ -71,7 +84,16 @@ export function Navbar() {
           title="Stockage utilisé / capacité totale — la capacité dépend du niveau de vos entrepôts, pas de leur superficie."
         >
           <Warehouse size={16} className="text-brand-200" />
-          <span>{storage ? `${Math.round(storage.used)}/${Math.round(storage.capacity)}` : "…"}</span>
+          <span>
+            {storage ? (
+              <>
+                <AnimatedNumber value={storage.used} previousValue={previousUsedRef.current} />/
+                {Math.round(storage.capacity)}
+              </>
+            ) : (
+              "…"
+            )}
+          </span>
         </div>
       </div>
 

@@ -1,11 +1,11 @@
 import type {
+  ActionHistoryEntry,
   BorrowResponse,
   BulkActionResponse,
   BulkProtectResponse,
   CalendarDay,
   CatalogDetail,
   CatalogItem,
-  HireWorkerResponse,
   InventoryItem,
   Loan,
   MarketPrice,
@@ -19,8 +19,8 @@ import type {
   ResourceSelection,
   StartActionResponse,
   Storage,
+  Transaction,
   Wallet,
-  Worker,
 } from "./types";
 import { emitMutation } from "./events";
 
@@ -68,7 +68,7 @@ export const api = {
     request<OutcomeResponse>(`/parcels/${id}/protect`, { method: "POST" }),
   startAction: (
     id: number,
-    body: { action_type: string; worker_id: number; resources: ResourceSelection[] },
+    body: { action_type: string; resources: ResourceSelection[] },
   ) =>
     request<StartActionResponse>(`/parcels/${id}/actions`, {
       method: "POST",
@@ -76,6 +76,7 @@ export const api = {
     }),
 
   getOngoingActions: () => request<OngoingAction[]>("/actions/ongoing"),
+  getActionHistory: (limit = 100) => request<ActionHistoryEntry[]>(`/actions/history?limit=${limit}`),
 
   bulkProtect: () => request<BulkProtectResponse>("/parcels/bulk/protect", { method: "POST" }),
   bulkStartAction: (actionType: string, resources: ResourceSelection[]) =>
@@ -106,10 +107,6 @@ export const api = {
       body: JSON.stringify({ item_id: itemId, quantity }),
     }),
 
-  getWorkers: () => request<Worker[]>("/workers"),
-  hireWorker: () => request<HireWorkerResponse>("/workers/hire", { method: "POST" }),
-  fireWorker: (id: number) => request<OutcomeResponse>(`/workers/${id}/fire`, { method: "POST" }),
-
   getStorage: () => request<Storage>("/storage"),
 
   getLoans: () => request<Loan[]>("/bank/loans"),
@@ -128,6 +125,14 @@ export const api = {
       method: "PUT",
       body: JSON.stringify(patch),
     }),
+
+  getTransactions: (params?: { limit?: number; category?: string }) => {
+    const qs = new URLSearchParams(
+      Object.fromEntries(Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])),
+    ).toString();
+    return request<Transaction[]>(`/transactions${qs ? `?${qs}` : ""}`);
+  },
+  getTransaction: (id: number) => request<Transaction>(`/transactions/${id}`),
 };
 
 export { ApiError };

@@ -1,8 +1,8 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { Bell, Landmark, Snowflake, Flame } from "lucide-react";
-import { usePolledData, useMutationRefresh } from "@/lib/hooks";
+import { usePolledData, useMutationRefresh, useClickOutside } from "@/lib/hooks";
 import { api } from "@/lib/api";
 import { cn } from "@/lib/utils";
 
@@ -18,20 +18,7 @@ export function NavNotificationBell() {
   const { data, refresh } = usePolledData(() => api.getNotifications(), 15000);
   useMutationRefresh(refresh);
 
-  useEffect(() => {
-    function onClick(e: MouseEvent) {
-      if (rootRef.current && !rootRef.current.contains(e.target as Node)) setOpen(false);
-    }
-    function onKey(e: KeyboardEvent) {
-      if (e.key === "Escape") setOpen(false);
-    }
-    document.addEventListener("mousedown", onClick);
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("mousedown", onClick);
-      document.removeEventListener("keydown", onKey);
-    };
-  }, []);
+  useClickOutside(rootRef, () => setOpen(false), { escape: true });
 
   async function handleOpen() {
     const next = !open;

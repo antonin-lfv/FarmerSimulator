@@ -5,6 +5,8 @@ import { FarmMap } from "@/components/map/FarmMap";
 import { ParcelPanel } from "@/components/map/ParcelPanel";
 import { WeatherCard } from "@/components/weather/WeatherCard";
 import { usePolledData } from "@/lib/hooks";
+import { useCalendar } from "@/lib/calendar-context";
+import { useWallet } from "@/lib/wallet-context";
 import { api } from "@/lib/api";
 import type { ParcelDetail, ResourceMode } from "@/lib/types";
 import { cn } from "@/lib/utils";
@@ -20,15 +22,17 @@ export function FarmManager({
   const [selectedParcel, setSelectedParcel] = useState<ParcelDetail | null>(null);
   const [loadingParcel, setLoadingParcel] = useState(false);
 
-  const { data: wallet } = usePolledData(() => api.getWallet(), 5000);
+  const { wallet } = useWallet();
   const { data: parcels, refresh: refreshParcels } = usePolledData(() => api.getParcels(), 8000);
   const { data: ongoingActions, refresh: refreshActions } = usePolledData(
     () => api.getOngoingActions(),
     2000,
   );
-  const { data: workers } = usePolledData(() => api.getWorkers(), 15000);
   const { data: catalog, refresh: refreshCatalog } = usePolledData(() => api.getCatalog(), 10000);
-  const { data: calendar } = usePolledData(() => api.getCalendar(), 15000);
+  // Shared context (4s poll) instead of a local one (was 15s) — keeps the
+  // map's weather bubble in sync with the navbar/weather card instead of
+  // lagging behind on every day change.
+  const { calendar } = useCalendar();
 
   const loadParcel = useCallback(async (parcelId: number) => {
     setSelectedId(parcelId);
@@ -76,11 +80,10 @@ export function FarmManager({
 
   async function handleStartAction(
     actionType: string,
-    workerId: number,
     resources: { subcategory: string; item_id: number; mode: ResourceMode }[],
   ) {
     if (!selectedId) return { success: false, message: "Aucune parcelle sélectionnée." };
-    const result = await api.startAction(selectedId, { action_type: actionType, worker_id: workerId, resources });
+    const result = await api.startAction(selectedId, { action_type: actionType, resources });
     if (result.success) {
       await Promise.all([loadParcel(selectedId), refreshActions(), refreshCatalog()]);
     }
@@ -132,7 +135,6 @@ export function FarmManager({
           parcel={selectedParcel}
           loading={loadingParcel}
           ongoingAction={ongoingForSelected}
-          workers={workers ?? []}
           catalog={catalog ?? []}
           weather={calendar?.weather}
           onRefreshCatalog={refreshCatalog}

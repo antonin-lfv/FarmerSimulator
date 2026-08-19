@@ -54,6 +54,13 @@ class Parcel(Base):
     # variety's required_growth_days. Reset to 0 on replant and at harvest.
     growth_progress: Mapped[float] = mapped_column(Float, nullable=False, default=0.0)
 
+    # Crop rotation (champ parcels only — vigne/forêt are single-family by
+    # nature and never touch these two fields, so they stay at the default
+    # forever). Sowing the same crop family as last time depletes the soil;
+    # alternating families replenishes it. See action_service.start_action.
+    soil_fertility: Mapped[float] = mapped_column(Float, nullable=False, default=100.0)
+    last_crop_subcategory: Mapped[str | None] = mapped_column(String, nullable=True)
+
 
 class Catalog(Base):
     __tablename__ = "catalog"
@@ -75,7 +82,6 @@ class Vehicule(Base):
         Integer, ForeignKey("catalog.item_id"), nullable=False
     )
     amount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    num_available: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class Accessory(Base):
@@ -86,7 +92,6 @@ class Accessory(Base):
         Integer, ForeignKey("catalog.item_id"), nullable=False
     )
     amount: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
-    num_available: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
 
 
 class Pack(Base):
@@ -122,15 +127,6 @@ class ActionRequirement(Base):
     amount: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
-class Worker(Base):
-    __tablename__ = "workers"
-
-    worker_id: Mapped[int] = mapped_column(Integer, primary_key=True)
-    worker_name: Mapped[str] = mapped_column(String, nullable=False)
-    worker_price: Mapped[float] = mapped_column(Float, nullable=False)
-    available: Mapped[bool] = mapped_column(Boolean, nullable=False, default=True)
-
-
 class OngoingAction(Base):
     __tablename__ = "ongoing_actions"
 
@@ -139,9 +135,6 @@ class OngoingAction(Base):
         Integer, ForeignKey("parcels.parcel_id"), nullable=False
     )
     action_type: Mapped[str] = mapped_column(String, nullable=False)
-    worker_id: Mapped[int] = mapped_column(
-        Integer, ForeignKey("workers.worker_id"), nullable=False
-    )
     start_time: Mapped[float] = mapped_column(Float, nullable=False)
     end_time: Mapped[float] = mapped_column(Float, nullable=False)
     resources_used: Mapped[str] = mapped_column(Text, nullable=False)
@@ -170,6 +163,18 @@ class UsedVehicle(Base):
     )
 
 
+class UsedAccessory(Base):
+    __tablename__ = "used_accessories"
+
+    used_accessory_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    item_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("catalog.item_id"), nullable=False
+    )
+    ongoing_action_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey("ongoing_actions.ongoing_action_id"), nullable=False
+    )
+
+
 class Loan(Base):
     __tablename__ = "loans"
 
@@ -180,7 +185,6 @@ class Loan(Base):
     monthly_payment: Mapped[float] = mapped_column(Float, nullable=False)
     term_months: Mapped[int] = mapped_column(Integer, nullable=False)
     taken_at: Mapped[float] = mapped_column(Float, nullable=False)
-    taken_at_day: Mapped[int] = mapped_column(Integer, nullable=False)
     next_payment_day: Mapped[int] = mapped_column(Integer, nullable=False)
 
 
@@ -202,6 +206,42 @@ class Notification(Base):
     # to purge anything older than settings.notification_retention_days.
     created_day: Mapped[int] = mapped_column(Integer, nullable=False)
     read: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+
+
+class Transaction(Base):
+    __tablename__ = "transactions"
+
+    transaction_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    created_at: Mapped[float] = mapped_column(Float, nullable=False)
+    game_day: Mapped[int] = mapped_column(Integer, nullable=False)
+    category: Mapped[str] = mapped_column(String, nullable=False)
+    label: Mapped[str] = mapped_column(String, nullable=False)
+    # Signed: positive = money in (sale, loan, cheat), negative = money out
+    # (purchase, action cost, rental, loan payment...).
+    amount: Mapped[float] = mapped_column(Float, nullable=False)
+    balance_after: Mapped[float] = mapped_column(Float, nullable=False)
+    # Itemized detail, only set for line-item purchases/sales (not e.g. loan
+    # payments) — lets the "facture" view show a real breakdown.
+    item_name: Mapped[str | None] = mapped_column(String, nullable=True)
+    quantity: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    unit_price: Mapped[float | None] = mapped_column(Float, nullable=True)
+    # A big-ticket purchase (vehicules/accessoires) gets a proper invoice
+    # number and renders as a real facture instead of a plain ledger line.
+    is_invoice: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    invoice_number: Mapped[str | None] = mapped_column(String, nullable=True)
+
+
+class ActionHistoryEntry(Base):
+    __tablename__ = "action_history"
+
+    action_history_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    parcel_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    action_type: Mapped[str] = mapped_column(String, nullable=False)
+    start_time: Mapped[float] = mapped_column(Float, nullable=False)
+    end_time: Mapped[float] = mapped_column(Float, nullable=False)
+    superficie: Mapped[float] = mapped_column(Float, nullable=False)
+    cost: Mapped[float] = mapped_column(Float, nullable=False)
+    resources_used: Mapped[str] = mapped_column(Text, nullable=False)
 
 
 class NotificationSettings(Base):
