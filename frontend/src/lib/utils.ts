@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { Tractor, Sprout, Wheat, TreePine, Grape, type LucideIcon } from "lucide-react";
-import type { ResourceMode, CatalogItem, OngoingAction, Parcel, Weather } from "./types";
+import type { ResourceMode, CatalogItem, OngoingAction, Parcel, SurfaceType, Weather } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -38,15 +38,37 @@ export interface ActionGroup {
   sampleParcelId: number;
 }
 
-// Every owned, idle (no ongoing action), actionable parcel, clustered by its
-// next_action — the "what needs doing across the whole farm" view. Used by
-// both /parcels (full table) and the dashboard's compact to-do widget, so a
-// 54-parcel farm never needs a parcel-by-parcel scroll to see what's pending.
+// Mirrors backend action_service.HARVEST_REWARDS keys — the action types that
+// require growth_progress_percent to reach 100 before start_action accepts
+// them (calendar_service.required_growth_days). A parcel whose next_action is
+// one of these but isn't done growing yet isn't actually launchable, even
+// though parcel_next_action already points to it.
+export const HARVEST_ACTION_TYPES = new Set([
+  "récolter céréales", "récolter coton", "récolter patates", "recolter raisins", "couper le bois",
+]);
+
+// True once a parcel's next_action can actually be started right now — false
+// for a harvest-type action still short of 100% growth (start_action would
+// reject it server-side with "encore N jours"). Used to keep "what's ready"
+// lists (bulk action groups, the dashboard to-do widget) honest instead of
+// listing a parcel as launchable when trying it would just error out.
+export function isReadyForNextAction(parcel: Parcel): boolean {
+  if (!parcel.parcel_next_action || !HARVEST_ACTION_TYPES.has(parcel.parcel_next_action)) return true;
+  return parcel.growth_progress_percent == null || parcel.growth_progress_percent >= 100;
+}
+
+// Every owned, idle (no ongoing action), actually-launchable parcel,
+// clustered by its next_action — the "what needs doing across the whole
+// farm" view. Used by both /parcels (full table) and the dashboard's compact
+// to-do widget, so a 54-parcel farm never needs a parcel-by-parcel scroll to
+// see what's pending. Parcels still growing toward a harvest are excluded
+// here (see groupGrowingParcels) rather than listed as falsely ready.
 export function groupPendingActions(parcels: Parcel[], ongoingActions: OngoingAction[]): ActionGroup[] {
   const busyParcelIds = new Set(ongoingActions.map((a) => a.parcel_id));
   const groupMap = new Map<string, ActionGroup>();
   for (const parcel of parcels) {
     if (!parcel.is_purchased || !parcel.parcel_next_action || busyParcelIds.has(parcel.parcel_id)) continue;
+    if (!isReadyForNextAction(parcel)) continue;
     const existing = groupMap.get(parcel.parcel_next_action);
     if (existing) {
       existing.count += 1;
@@ -59,6 +81,77 @@ export function groupPendingActions(parcels: Parcel[], ongoingActions: OngoingAc
     }
   }
   return [...groupMap.values()].sort((a, b) => b.count - a.count);
+}
+
+export interface GrowingGroup {
+  actionType: string;
+  count: number;
+  /** 0-100 average across the group — always < 100 (100%+ moves to groupPendingActions instead). */
+  avgProgress: number;
+}
+
+// The complement of groupPendingActions: owned, idle parcels whose next step
+// is a harvest that isn't ready yet, clustered the same way, with their
+// average growth so "what's coming" is visible alongside "what's ready".
+export function groupGrowingParcels(parcels: Parcel[], ongoingActions: OngoingAction[]): GrowingGroup[] {
+  const busyParcelIds = new Set(ongoingActions.map((a) => a.parcel_id));
+  const totals = new Map<string, { count: number; sum: number }>();
+  for (const parcel of parcels) {
+    if (!parcel.is_purchased || !parcel.parcel_next_action || busyParcelIds.has(parcel.parcel_id)) continue;
+    if (isReadyForNextAction(parcel)) continue;
+    const progress = parcel.growth_progress_percent ?? 0;
+    const existing = totals.get(parcel.parcel_next_action);
+    if (existing) {
+      existing.count += 1;
+      existing.sum += progress;
+    } else {
+      totals.set(parcel.parcel_next_action, { count: 1, sum: progress });
+    }
+  }
+  return [...totals.entries()]
+    .map(([actionType, { count, sum }]) => ({ actionType, count, avgProgress: sum / count }))
+    .sort((a, b) => b.count - a.count);
+}
+
+export interface CycleStep {
+  id: string;
+  label: string;
+  matches: (actionType: string) => boolean;
+}
+
+// The full repeating action cycle per surface type, for display only (see
+// CycleStepper) — not the source of truth for what happens next (that's
+// always the backend's Action.next_action chain). "mettre engrais X" is
+// collapsed to one generic "Engrais" step and "récolter X" to one generic
+// "Récolter" step regardless of which crop family was actually planted, so
+// the cycle reads the same for every champ.
+const CHAMP_CYCLE: CycleStep[] = [
+  { id: "labourer", label: "Labourer", matches: (a) => a === "labourer" },
+  { id: "semer", label: "Semer", matches: (a) => a === "semer" },
+  { id: "engrais", label: "Engrais", matches: (a) => a.startsWith("mettre engrais") },
+  { id: "recolter", label: "Récolter", matches: (a) => a.startsWith("récolter") },
+];
+
+const VIGNE_CYCLE: CycleStep[] = [
+  { id: "planter", label: "Planter", matches: (a) => a === "planter des vignes" },
+  { id: "recolter", label: "Récolter", matches: (a) => a === "recolter raisins" },
+];
+
+const FORET_CYCLE: CycleStep[] = [
+  { id: "planter", label: "Planter", matches: (a) => a === "planter des arbres" },
+  { id: "couper", label: "Couper", matches: (a) => a === "couper le bois" },
+];
+
+export function getCropCycle(typeSurface: SurfaceType): CycleStep[] | null {
+  if (typeSurface === "champ") return CHAMP_CYCLE;
+  if (typeSurface === "vigne") return VIGNE_CYCLE;
+  if (typeSurface === "forêt") return FORET_CYCLE;
+  return null;
+}
+
+export function currentCycleIndex(cycle: CycleStep[], actionType: string | null | undefined): number {
+  if (!actionType) return -1;
+  return cycle.findIndex((step) => step.matches(actionType));
 }
 
 // Mirrors backend calendar_service.GROWING_NEXT_ACTIONS — a parcel is at risk

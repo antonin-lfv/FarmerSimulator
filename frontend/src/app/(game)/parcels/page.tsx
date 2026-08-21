@@ -14,7 +14,7 @@ import { usePolledData, useMutationRefresh } from "@/lib/hooks";
 import { useCalendar } from "@/lib/calendar-context";
 import { useToast } from "@/components/ui/ToastProvider";
 import { api } from "@/lib/api";
-import { formatDuration, isParcelAtRisk, SURFACE_LABELS } from "@/lib/utils";
+import { formatDuration, isParcelAtRisk, isReadyForNextAction, SURFACE_LABELS } from "@/lib/utils";
 import type { Parcel } from "@/lib/types";
 
 export default function ParcelsPage() {
@@ -34,9 +34,10 @@ export default function ParcelsPage() {
   // step — with 50+ parcels on a full farm, what needs attention should be
   // visible without scrolling past everything else first.
   function rowPriority(p: Parcel) {
-    if (!actionByParcel.has(p.parcel_id) && p.parcel_next_action) return 0;
+    if (!actionByParcel.has(p.parcel_id) && p.parcel_next_action && isReadyForNextAction(p)) return 0;
     if (actionByParcel.has(p.parcel_id)) return 1;
-    return 2;
+    if (!actionByParcel.has(p.parcel_id) && p.parcel_next_action) return 2;
+    return 3;
   }
   const owned = (parcels ?? [])
     .filter((p) => p.is_purchased)
@@ -168,6 +169,16 @@ export default function ParcelsPage() {
                           </span>
                           <span className="text-xs text-foreground-muted">
                             {formatDuration(action.remaining_minutes * 60)}
+                          </span>
+                        </div>
+                      ) : parcel.parcel_next_action && !isReadyForNextAction(parcel) ? (
+                        <div className="flex items-center gap-3">
+                          <Badge tone="neutral">En pousse</Badge>
+                          <span className="w-28">
+                            <ProgressBar value={parcel.growth_progress_percent ?? 0} />
+                          </span>
+                          <span className="text-xs text-foreground-muted">
+                            {Math.round(parcel.growth_progress_percent ?? 0)}%
                           </span>
                         </div>
                       ) : parcel.parcel_next_action ? (

@@ -9,13 +9,17 @@ import { ProgressBar } from "@/components/ui/ProgressBar";
 import { InfoTip } from "@/components/ui/InfoTip";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ResourcePicker } from "@/components/shop/ResourcePicker";
+import { CycleStepper } from "@/components/ui/CycleStepper";
 import type { CatalogItem, OngoingAction, ParcelDetail, PossibleAction, ResourceMode, Weather } from "@/lib/types";
 import {
   cn,
+  currentCycleIndex,
   decodeResourceValue,
   equipmentDurationMultiplier,
   formatDuration,
   formatUsd,
+  getCropCycle,
+  HARVEST_ACTION_TYPES,
   isParcelAtRisk,
   LABOR_RATE_USD,
   SURFACE_LABELS,
@@ -106,6 +110,14 @@ export function ParcelPanel({
   const isEntrepot = parcel.type_surface === "entrepôt";
   const isGrowing = parcel.is_purchased && !isEntrepot;
   const isAtRisk = isParcelAtRisk(parcel, weather);
+  const cycle = getCropCycle(parcel.type_surface);
+  const cycleIndex = cycle ? currentCycleIndex(cycle, ongoingAction?.action_type ?? parcel.parcel_next_action) : -1;
+  const harvestNotReady =
+    !!action &&
+    !ongoingAction &&
+    HARVEST_ACTION_TYPES.has(action.action_type) &&
+    parcel.growth_progress_percent != null &&
+    parcel.growth_progress_percent < 100;
 
   return (
     <Card>
@@ -118,6 +130,15 @@ export function ParcelPanel({
         </div>
       </CardHeader>
       <CardBody className="flex flex-col gap-4">
+        {isGrowing && cycle && (
+          <div>
+            <p className="mb-1.5 flex items-center gap-1 text-xs text-foreground-muted">
+              Cycle de culture
+              <InfoTip text="Le cycle complet de cette parcelle — l'étape en surbrillance est celle en cours ou à lancer maintenant. Une fois récoltée (ou coupée), la parcelle repart du début." />
+            </p>
+            <CycleStepper steps={cycle} currentIndex={cycleIndex} inProgress={!!ongoingAction} />
+          </div>
+        )}
         <dl className="flex flex-col gap-1.5 text-sm">
             {isGrowing && parcel.parcel_next_action ? (
               <div className="grid grid-cols-2 gap-x-3 gap-y-2">
@@ -287,6 +308,11 @@ export function ParcelPanel({
           </div>
         ) : !action ? (
           <p className="text-sm text-foreground-muted">Aucune action disponible.</p>
+        ) : harvestNotReady ? (
+          <p className="rounded-lg border border-border bg-surface-sunken p-3 text-sm text-foreground-secondary">
+            Récolte pas encore prête — pousse à {Math.round(parcel.growth_progress_percent!)}%. Revenez une fois
+            la jauge à 100%.
+          </p>
         ) : (
           <ActionForm
             key={parcel.parcel_id}

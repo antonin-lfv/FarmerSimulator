@@ -107,6 +107,18 @@ tout, disponible même si vous ne possédez rien.
   triviaux — santé de la récolte, pousse, engrais, coût total, stockage, mensualité de prêt, prix
   du marché, location de matériel... Pas de nouveau composant JS de tooltip, juste `title` sur un
   `<span>` pour rester léger.
+- **Cycle de culture visible** (`ParcelPanel`) : le cycle complet de la parcelle (labourer → semer →
+  engrais → récolter pour un champ, planter → récolter/couper pour vigne/forêt) s'affiche en
+  totalité avec l'étape courante en surbrillance, pas seulement l'étape précédente/suivante — le
+  cycle est une donnée purement d'affichage côté frontend (`getCropCycle`, `lib/utils.ts`), la
+  chaîne réelle reste pilotée par `Action.next_action` côté backend.
+- **« À faire » vs « en pousse »** : une parcelle dont la prochaine étape est une récolte
+  (`récolter X`/`recolter raisins`/`couper le bois`) mais dont la pousse n'a pas atteint 100%
+  n'apparaît plus comme « prête » dans les listes d'actions groupées (dashboard et `/parcels`) —
+  elle bascule dans une section « En pousse » séparée (compte + pousse moyenne), pour ne jamais
+  proposer une action que le serveur refuserait. Le panneau de parcelle individuelle applique la
+  même règle : le formulaire de lancement est remplacé par un message d'attente tant que la pousse
+  n'est pas à 100%.
 
 ## Actions groupées
 
@@ -122,10 +134,11 @@ action une par une n'est plus praticable :
   toutes » ouvre une modale où l'on sélectionne une seule fois le matériel/graines (achat ou
   location) pour tout le groupe, puis `POST /api/parcels/bulk/actions` démarre l'action sur chaque
   parcelle éligible.
-- **Limite réaliste, pas un contournement** : un ouvrier ne traite qu'une parcelle à la fois, donc
-  une action groupée ne démarre jamais plus que le nombre d'ouvriers libres au moment du clic — le
-  reste est reporté. Relancer la même action groupée plus tard reprend exactement là où elle s'est
-  arrêtée, puisqu'elle ne cible que les parcelles encore en attente de cette étape. Chaque parcelle
-  passe par le même `action_service.start_action` que l'action individuelle (mêmes vérifications de
-  stock, de véhicule disponible, de solde) — aucune règle dupliquée ou contournée pour le mode
-  groupé.
+- **Pas de limite artificielle** : aucune notion de main d'œuvre limitée (voir plus haut, tarif
+  fixe) — une action groupée démarre sur toutes les parcelles éligibles d'un coup. Seul le matériel
+  réellement disponible (véhicules/accessoires non déjà occupés) peut faire échouer certaines
+  parcelles ; celles-ci sont signalées dans la réponse, relancer la même action groupée plus tard
+  reprend exactement là où elle s'est arrêtée puisqu'elle ne cible que les parcelles encore en
+  attente de cette étape. Chaque parcelle passe par le même `action_service.start_action` que
+  l'action individuelle (mêmes vérifications de stock, de véhicule disponible, de solde) — aucune
+  règle dupliquée ou contournée pour le mode groupé.
