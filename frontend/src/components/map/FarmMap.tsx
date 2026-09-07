@@ -1,6 +1,5 @@
 "use client";
 
-import dynamic from "next/dynamic";
 import { useEffect, useRef, useState } from "react";
 import {
   Compass,
@@ -11,7 +10,6 @@ import {
   Minus,
   Plus,
   RotateCcw,
-  Map,
   MousePointer2,
   X,
   HelpCircle,
@@ -24,10 +22,6 @@ import type {
   MapFilter,
 } from "./three/createFarmScene";
 
-const FarmMap2D = dynamic(
-  () => import("./FarmMap2D").then((m) => m.FarmMap2D),
-  { ssr: false },
-);
 interface FarmMapProps {
   parcels: Parcel[];
   ongoingActions: OngoingAction[];
@@ -55,7 +49,7 @@ export function FarmMap(props: FarmMapProps) {
   const [labels, setLabels] = useState(true);
   const [ready, setReady] = useState(false);
   const [failed, setFailed] = useState(false);
-  const [flat, setFlat] = useState(false);
+  const [retry, setRetry] = useState(0);
   const [expanded, setExpanded] = useState(false);
   const [help, setHelp] = useState(false);
   useEffect(() => {
@@ -65,7 +59,6 @@ export function FarmMap(props: FarmMapProps) {
     };
   }, [onSelect]);
   useEffect(() => {
-    if (flat || failed) return;
     let cancelled = false;
     import("./three/createFarmScene")
       .then(({ createFarmScene }) => {
@@ -75,7 +68,10 @@ export function FarmMap(props: FarmMapProps) {
             host.current,
             labelHost.current,
             (id) => select.current(id),
-            () => setFailed(true),
+            () => {
+              setReady(false);
+              setFailed(true);
+            },
             compass.current,
           );
           setReady(true);
@@ -83,6 +79,7 @@ export function FarmMap(props: FarmMapProps) {
           console.error("Unable to initialise farm scene", error);
           host.current.replaceChildren();
           labelHost.current.replaceChildren();
+          setReady(false);
           setFailed(true);
         }
       })
@@ -94,7 +91,7 @@ export function FarmMap(props: FarmMapProps) {
       scene.current?.dispose();
       scene.current = null;
     };
-  }, [flat, failed]);
+  }, [retry]);
   useEffect(() => {
     scene.current?.update({ ...props, filter, labels });
   }, [props, filter, labels, ready]);
@@ -114,64 +111,43 @@ export function FarmMap(props: FarmMapProps) {
   function command(action: MapCommand) {
     scene.current?.command(action);
   }
-  const fallback = flat || failed;
+  function retryScene() {
+    setFailed(false);
+    setReady(false);
+    setRetry((value) => value + 1);
+  }
   return (
     <div className={`farm-viewport ${expanded ? "is-expanded" : ""}`}>
-      {fallback ? (
-        <div className="farm-flat-map">
-          {failed && (
-            <p role="status" className="map-fallback-notice">
-              La 3D est indisponible sur cet appareil. Le plan 2D reste
-              entièrement jouable.
-            </p>
-          )}
-          <FarmMap2D {...props} />
+      <div ref={host} className="farm-canvas" />
+      <div ref={labelHost} className="farm-labels" />
+      {!ready && !failed && (
+        <div className="map-loading" role="status">
+          <Layers3 size={32} />
+          <span>Votre ferme prend du relief…</span>
         </div>
-      ) : (
-        <>
-          <div ref={host} className="farm-canvas" />
-          <div ref={labelHost} className="farm-labels" />
-          {!ready && (
-            <div className="map-loading" role="status">
-              <Layers3 size={32} />
-              <span>Votre ferme prend du relief…</span>
-            </div>
-          )}
-        </>
+      )}
+      {failed && (
+        <div className="map-error" role="alert">
+          <Layers3 size={32} />
+          <strong>La carte 3D n’a pas pu démarrer.</strong>
+          <span>Vérifiez que l’accélération graphique est activée.</span>
+          <button onClick={retryScene}>Réessayer</button>
+        </div>
       )}
       <div className="map-top-controls">
-        {!fallback && (
-          <div className="map-filters" aria-label="Filtrer la carte">
-            {FILTERS.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => setFilter(item.id)}
-                aria-pressed={filter === item.id}
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-        )}
-        <div className="map-view-switch">
-          <button
-            aria-pressed={!fallback}
-            onClick={() => {
-              if (fallback) {
-                setReady(false);
-                setFailed(false);
-                setFlat(false);
-              }
-            }}
-          >
-            <Layers3 size={15} /> 3D
-          </button>
-          <button aria-pressed={fallback} onClick={() => setFlat(true)}>
-            <Map size={15} /> 2D
-          </button>
+        <div className="map-filters" aria-label="Filtrer la carte">
+          {FILTERS.map((item) => (
+            <button
+              key={item.id}
+              onClick={() => setFilter(item.id)}
+              aria-pressed={filter === item.id}
+            >
+              {item.label}
+            </button>
+          ))}
         </div>
       </div>
-      {!fallback && (
+      {!failed && (
         <>
           <div className="map-compass">
             <span ref={compass}>
@@ -280,15 +256,6 @@ export function FarmMap(props: FarmMapProps) {
             </div>
           )}
         </>
-      )}
-      {fallback && expanded && (
-        <button
-          className="map-flat-close"
-          onClick={() => setExpanded(false)}
-          aria-label="Réduire"
-        >
-          <X size={20} />
-        </button>
       )}
     </div>
   );

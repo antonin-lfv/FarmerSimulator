@@ -122,11 +122,8 @@ def _next_fertilize_action(db: Session, parcel: Parcel) -> str:
 
 
 def _parcel_has_ongoing_action(db: Session, parcel_id: int) -> bool:
-    current_time = time.time()
     ongoing = db.execute(
-        select(OngoingAction).where(
-            OngoingAction.parcel_id == parcel_id, OngoingAction.end_time > current_time
-        )
+        select(OngoingAction).where(OngoingAction.parcel_id == parcel_id)
     ).first()
     return ongoing is not None
 
@@ -318,8 +315,7 @@ def start_action(
 def get_ongoing_actions(db: Session) -> list[dict]:
     current_time = time.time()
     rows = db.execute(
-        select(OngoingAction).where(OngoingAction.end_time > current_time)
-        .order_by(OngoingAction.end_time)
+        select(OngoingAction).order_by(OngoingAction.end_time)
     ).scalars().all()
 
     results = []

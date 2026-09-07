@@ -15,7 +15,7 @@ Cliquer sur le sol, un numéro, ou choisir un terrain dans « Accès rapide à u
 
 Les filtres mettent en évidence les terres possédées, à vendre ou en activité. Les badges indiquent propriété, sélection, activité et risque météo. Les numéros trop rapprochés sont espacés ou masqués ; zoomer ou utiliser l'accès rapide permet de rejoindre tous les terrains.
 
-Le bouton 2D restitue le plan d'origine. Cette vue s'active également lorsque la création du contexte graphique échoue ou que le contexte est perdu. Le serveur reste indispensable pour les données et actions ; une panne initiale affiche une possibilité de réessayer.
+La carte est exclusivement en 3D. Si l'accélération graphique n'est pas disponible, l'interface affiche une explication et permet de relancer la scène. La page d'accueil contient elle aussi une preview Three.js manipulable : glisser pour tourner, utiliser la molette ou le pincement pour zoomer, puis cliquer sur une parcelle pour entrer dans l'exploitation.
 
 ## Lancement local
 
@@ -40,6 +40,6 @@ Les tests de carte nécessitent Node.js 22.18 ou ultérieur. Ils couvrent les 54
 
 La scène Three.js est chargée à la demande côté navigateur. Les arbres et les rangées utilisent des instances partagées. Le rendu est limité à 45 images/s et à une densité de pixels de 1,75, suspendu lorsque l'onglet est caché ou la carte hors écran. Les ressources graphiques et les écouteurs sont libérés lors du changement de vue ou de page. La préférence de réduction des animations est respectée.
 
-Validation manuelle : rotation sans sélection accidentelle, sélection d'un champ et d'un entrepôt, centrage sur la sélection, filtres, aller-retour 2D/3D, carte agrandie et affichage à 390 px. Les achats et travaux n'ont pas été déclenchés dans la sauvegarde existante.
+Validation manuelle : rotation sans sélection accidentelle, sélection d'un champ et d'un entrepôt, centrage sur la sélection, filtres, carte agrandie, preview de la page d'accueil et affichage à 390 px.
 
 Le lint global signale encore des problèmes React préexistants dans `BulkActionModal`, `BuyItemModal`, `SellItemModal`, `AnimatedNumber`, `calendar-context` et `wallet-context`. Les fichiers de cette refonte sont vérifiés séparément.
