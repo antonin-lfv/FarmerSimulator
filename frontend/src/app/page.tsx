@@ -1,8 +1,8 @@
 import Link from "next/link";
-import Image from "next/image";
 import { ArrowRight, Map, LineChart, CloudSun, Sprout, Timer, Package } from "lucide-react";
 import { LinkButton } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
+import { LandingFarmPreview } from "@/components/map/LandingFarmPreview";
 
 const FEATURES = [
   {
@@ -81,14 +81,7 @@ export default function LandingPage() {
           <div className="relative">
             <div className="absolute -inset-6 -z-10 rounded-[2rem] bg-brand-50" />
             <div className="overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-              <Image
-                src="/map/map.png"
-                alt="Plan de la ferme"
-                width={800}
-                height={800}
-                className="h-full w-full object-cover"
-                priority
-              />
+              <LandingFarmPreview />
             </div>
           </div>
         </div>

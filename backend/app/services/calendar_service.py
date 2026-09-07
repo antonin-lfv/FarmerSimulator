@@ -213,6 +213,13 @@ def process_day_tick(db: Session) -> None:
 
     state = get_or_create_state(db)
     target_day = current_day_index(db)
+    # A save created with an accelerated development clock can have processed
+    # far more days than the normal clock currently reports. Rebase once when
+    # returning to normal pacing so daily growth and markets resume tomorrow.
+    if state.last_processed_day > target_day:
+        state.last_processed_day = target_day
+        db.commit()
+        return
     day = state.last_processed_day
     while day < target_day:
         day += 1

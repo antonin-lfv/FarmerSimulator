@@ -404,6 +404,9 @@ function ActionForm({
     return mult * equipmentDurationMultiplier(catalog, item.category, item.subcategory, item.price);
   }, 1);
   const totalMinutes = action.action_time_minutes * superficie * equipmentMultiplier;
+  const displayedDuration = formatDuration(
+    action.fixed_duration_seconds ?? totalMinutes * 60,
+  );
   const laborCost = LABOR_RATE_USD * totalMinutes;
 
   const rentalCost = action.requirements.reduce((sum, req) => {
@@ -434,7 +437,7 @@ function ActionForm({
         push({
           tone: "success",
           title: `${action.action_type} démarré`,
-          description: `${formatUsd(totalCost)} — ${Math.round(totalMinutes)} min`,
+          description: `${formatUsd(totalCost)} — ${displayedDuration}`,
         });
       }
     } finally {
@@ -447,11 +450,15 @@ function ActionForm({
       <div className="rounded-lg border border-border p-3">
         <div className="flex items-center justify-between text-sm">
           <span className="font-medium capitalize text-foreground">{action.action_type}</span>
-          <span className="text-foreground-muted">{action.action_time_minutes} min/ha</span>
+          <span className="text-foreground-muted">
+            {action.fixed_duration_seconds === null
+              ? `${action.action_time_minutes} min/ha`
+              : displayedDuration}
+          </span>
         </div>
         <p className="mt-1 text-xs text-foreground-muted">
-          {superficie} ha — {Math.round(totalMinutes)} min au total
-          {equipmentMultiplier !== 1 && (
+          {superficie} ha — {displayedDuration} au total
+          {action.fixed_duration_seconds === null && equipmentMultiplier !== 1 && (
             <span className={equipmentMultiplier < 1 ? "text-brand-600" : "text-foreground-muted"}>
               {" "}
               (équipement : {equipmentMultiplier < 1 ? "-" : "+"}

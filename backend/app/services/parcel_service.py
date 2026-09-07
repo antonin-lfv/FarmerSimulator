@@ -132,6 +132,7 @@ def get_possible_actions(db: Session, parcel: Parcel) -> list[dict]:
             "action_id": action.action_id,
             "action_type": action.action_type,
             "action_time_minutes": action.action_time,
+            "fixed_duration_seconds": settings.debug_action_seconds,
             "next_action": action.next_action,
             "requirements": [
                 {

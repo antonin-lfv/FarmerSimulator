@@ -2,7 +2,7 @@ import json
 import random
 import time
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -122,11 +122,8 @@ def _next_fertilize_action(db: Session, parcel: Parcel) -> str:
 
 
 def _parcel_has_ongoing_action(db: Session, parcel_id: int) -> bool:
-    current_time = time.time()
     ongoing = db.execute(
-        select(OngoingAction).where(
-            OngoingAction.parcel_id == parcel_id, OngoingAction.end_time > current_time
-        )
+        select(OngoingAction).where(OngoingAction.parcel_id == parcel_id)
     ).first()
     return ongoing is not None
 
@@ -318,8 +315,7 @@ def start_action(
 def get_ongoing_actions(db: Session) -> list[dict]:
     current_time = time.time()
     rows = db.execute(
-        select(OngoingAction).where(OngoingAction.end_time > current_time)
-        .order_by(OngoingAction.end_time)
+        select(OngoingAction).order_by(OngoingAction.end_time)
     ).scalars().all()
 
     results = []
@@ -367,6 +363,21 @@ def list_action_history(db: Session, limit: int = 100) -> list[dict]:
 
 def complete_finished_actions(db: Session) -> None:
     current_time = time.time()
+    if settings.debug_action_seconds is not None:
+        # Enabling the fast test clock should also affect work launched before
+        # the backend restart; otherwise an old real-time job can remain stuck
+        # at several minutes while every new action lasts only a few seconds.
+        db.execute(
+            update(OngoingAction)
+            .where(
+                OngoingAction.end_time
+                > OngoingAction.start_time + settings.debug_action_seconds
+            )
+            .values(
+                end_time=OngoingAction.start_time + settings.debug_action_seconds
+            )
+        )
+        db.flush()
     finished = db.execute(
         select(OngoingAction).where(OngoingAction.end_time <= current_time)
     ).scalars().all()
