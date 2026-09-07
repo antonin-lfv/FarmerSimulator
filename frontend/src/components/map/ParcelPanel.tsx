@@ -259,7 +259,9 @@ export function ParcelPanel({
             )}
           >
             <p className={cn("text-xs", weather === "gel" ? "text-blue-900" : "text-red-700")}>
-              {weather === "gel"
+              {parcel.active_fire
+                ? "Incendie en cours — 20 points de santé perdus. Intervenez pour éteindre le foyer et protéger la parcelle pour la journée."
+                : weather === "gel"
                 ? "Risque de gel aujourd'hui — protégez cette parcelle pour annuler les dégâts."
                 : "Canicule aujourd'hui — protégez cette parcelle pour limiter le stress thermique."}
             </p>
@@ -274,7 +276,7 @@ export function ParcelPanel({
               ) : (
                 <Flame size={13} className="mr-1.5" />
               )}
-              Protéger la parcelle
+              {parcel.active_fire ? "Éteindre et protéger" : "Protéger la parcelle"}
             </Button>
             {protectError && (
               <p className={cn("text-xs", weather === "gel" ? "text-blue-900" : "text-red-700")}>{protectError}</p>

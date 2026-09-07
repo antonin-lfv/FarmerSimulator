@@ -1,36 +1,25 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Frontend Verdance
 
-## Getting Started
+Next.js App Router, TypeScript, Tailwind CSS et Three.js. Le lancement complet
+avec Docker, le rythme de test et les règles météo sont décrits dans le
+[README principal](../README.md). Les commandes de la carte sont détaillées dans
+[La ferme en 3D](../docs/carte-3d.md).
 
-First, run the development server:
-
-```bash
+```sh
+npm ci
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Le serveur de développement utilise le port 3000 : arrêter le conteneur frontend
+avant de le lancer. Le frontend Docker est une compilation de production ;
+reconstruire son image pour prendre en compte les changements.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```sh
+npm run test:map
+npm run build
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
-
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Les modules Three.js sont dans `src/components/map/three/` : `createFarmScene.ts`
+assemble la scène, `terrain.ts` calcule les hauteurs et passages des véhicules,
+`weatherEffects.ts` gère les particules et l'atmosphère. Les données de parcelles
+proviennent de l'API ; aucune météo de test n'est exposée dans l'application.

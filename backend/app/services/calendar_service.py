@@ -5,7 +5,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import GameState, Parcel
+from app.models import FireEvent, GameState, Parcel, TypeSurface
 from app.seed_traits import get_traits
 
 # A parcel is considered "growing" (crop in the ground, vulnerable to frost)
@@ -33,6 +33,13 @@ RAIN_PROBABILITY_BY_MONTH = {
     7: 0.20, 8: 0.20, 9: 0.26, 10: 0.32, 11: 0.35, 12: 0.35,
 }
 
+# Share of rainy days that become thunderstorms, mostly in the warmer months.
+# Storms keep the rain growth bonus so saved-game growth remains consistent.
+STORM_PROBABILITY_BY_MONTH = {
+    1: 0.01, 2: 0.01, 3: 0.02, 4: 0.04, 5: 0.07, 6: 0.10,
+    7: 0.12, 8: 0.12, 9: 0.08, 10: 0.04, 11: 0.02, 12: 0.01,
+}
+
 # Frost is essentially a winter phenomenon (with light shoulder-season risk).
 FROST_PROBABILITY_BY_MONTH = {
     1: 0.22, 2: 0.18, 3: 0.06, 4: 0.0, 5: 0.0, 6: 0.0,
@@ -45,7 +52,13 @@ CANICULE_PROBABILITY_BY_MONTH = {
     7: 0.22, 8: 0.22, 9: 0.08, 10: 0.0, 11: 0.0, 12: 0.0,
 }
 
-WEATHER_LABELS = {"normal": "Ensoleillé", "pluie": "Pluie", "gel": "Gel", "canicule": "Canicule"}
+WEATHER_LABELS = {
+    "normal": "Ensoleillé",
+    "pluie": "Pluie",
+    "orage": "Orage",
+    "gel": "Gel",
+    "canicule": "Canicule",
+}
 
 # Real (leap-year) calendar month lengths, Jan..Dec — the game shows an actual
 # date ("23 mai") rather than an abstract "Jour X / Mois Y", but deliberately
@@ -102,13 +115,17 @@ def get_weather(day_index: int) -> str:
     if rng.random() < CANICULE_PROBABILITY_BY_MONTH[month]:
         return "canicule"
     if rng.random() < RAIN_PROBABILITY_BY_MONTH[month]:
+        # Keep existing dry/rainy days stable in saved games; some rainy days
+        # become storms without changing their growth bonus.
+        if rng.random() < STORM_PROBABILITY_BY_MONTH[month]:
+            return "orage"
         return "pluie"
     return "normal"
 
 
 def growth_multiplier(day_index: int) -> float:
     weather = get_weather(day_index)
-    if weather == "pluie":
+    if weather in ("pluie", "orage"):
         return settings.rain_growth_multiplier
     if weather == "canicule":
         return settings.heat_growth_multiplier
@@ -208,6 +225,33 @@ def _accumulate_growth(db: Session, day: int) -> None:
         parcel.growth_progress += increment
 
 
+def _process_fire(db: Session, day: int, weather: str) -> None:
+    from app.services import notification_service
+
+    if weather != "canicule" or db.get(FireEvent, day) is not None:
+        return
+    rng = random.Random(day * 104729 + 43)
+    if rng.random() >= 0.08:
+        return
+    eligible = db.execute(
+        select(Parcel).join(TypeSurface).where(
+            Parcel.is_purchased.is_(True),
+            TypeSurface.type_surface == "forêt",
+            Parcel.planted_seed_item_id.is_not(None),
+            Parcel.parcel_next_action.in_(GROWING_NEXT_ACTIONS),
+        ).order_by(Parcel.parcel_id)
+    ).scalars().all()
+    eligible = [p for p in eligible if p.protected_until_day != day and p.yield_health > 0]
+    if not eligible:
+        return
+    parcel = rng.choice(eligible)
+    parcel.yield_health = max(0, parcel.yield_health - 20)
+    db.add(FireEvent(game_day=day, parcel_id=parcel.parcel_id))
+    notification_service.create(
+        db, "canicule", f"Incendie sur la parcelle {parcel.parcel_id} — protégez-la pour éteindre le foyer. Santé de la récolte : −20 points.", day,
+    )
+
+
 def process_day_tick(db: Session) -> None:
     from app.services import loan_service, market_service, notification_service
 
@@ -229,6 +273,7 @@ def process_day_tick(db: Session) -> None:
             notification_service.create(
                 db, weather, f"Alerte {WEATHER_LABELS[weather].lower()} — cultures exposées à risque.", day
             )
+        _process_fire(db, day, weather)
         _accumulate_growth(db, day)
         market_service.process_day(db, day)
         loan_service.process_day(db, day)

@@ -62,6 +62,14 @@ class Parcel(Base):
     last_crop_subcategory: Mapped[str | None] = mapped_column(String, nullable=True)
 
 
+class FireEvent(Base):
+    """One localized incident per game day; kept separate from existing save columns."""
+    __tablename__ = "fire_events"
+
+    game_day: Mapped[int] = mapped_column(Integer, primary_key=True)
+    parcel_id: Mapped[int] = mapped_column(Integer, ForeignKey("parcels.parcel_id"), nullable=False)
+
+
 class Catalog(Base):
     __tablename__ = "catalog"
 

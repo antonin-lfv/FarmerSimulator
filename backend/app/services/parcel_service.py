@@ -2,7 +2,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
 from app.config import settings
-from app.models import Action, ActionRequirement, Catalog, Parcel, TypeSurface
+from app.models import Action, ActionRequirement, Catalog, FireEvent, Parcel, TypeSurface
 from app.services import calendar_service, catalog_service, wallet_service
 
 # Weather -> the "accessoires" subcategory that discounts protection cost when
@@ -58,8 +58,11 @@ def _build_parcel_context(db: Session) -> dict:
     parcel — computed once per call instead of once per parcel."""
     from app.services import action_service  # deferred: action_service imports this module's siblings
 
+    today = calendar_service.current_day_index(db)
+    event = db.get(FireEvent, today)
     return {
-        "today": calendar_service.current_day_index(db),
+        "today": today,
+        "fire_parcel_id": event.parcel_id if event else None,
         "type_surfaces": {
             t.type_surface_id: t.type_surface for t in db.execute(select(TypeSurface)).scalars().all()
         },
@@ -80,6 +83,13 @@ def _parcel_dict(db: Session, parcel: Parcel, ctx: dict | None = None) -> dict:
     growth_progress_percent = (
         min(100.0, (parcel.growth_progress / required_days) * 100) if required_days else None
     )
+    # Harvest/replant restores crop health; an old incident must not ignite the
+    # replacement crop merely because it was planted on the same game day.
+    fire_damage_today = (
+        ctx["fire_parcel_id"] == parcel.parcel_id
+        and planted_seed is not None
+        and parcel.yield_health < 100
+    )
     return {
         "parcel_id": parcel.parcel_id,
         "superficie": parcel.superficie,
@@ -92,6 +102,8 @@ def _parcel_dict(db: Session, parcel: Parcel, ctx: dict | None = None) -> dict:
         "fertilized": parcel.fertilized,
         "storage_level": parcel.storage_level,
         "protected_today": parcel.protected_until_day == ctx["today"],
+        "active_fire": fire_damage_today and parcel.protected_until_day != ctx["today"],
+        "fire_damage_today": fire_damage_today,
         "planted_seed_name": planted_seed.name if planted_seed else None,
         "growth_progress_percent": growth_progress_percent,
         "soil_fertility": parcel.soil_fertility,

@@ -11,13 +11,31 @@ Le tableau de bord `/dashboard` est un espace de gestion centré sur un paysage 
 - Après avoir donné le focus à la carte : flèches, ZQSD ou WASD pour déplacer ; + / − pour zoomer ; R pour recentrer.
 - La barre d'outils propose aussi la vue du dessus, le centrage sur la sélection, les numéros et l'agrandissement. Échap quitte la carte agrandie.
 
-Cliquer sur le sol, un numéro, ou choisir un terrain dans « Accès rapide à une parcelle » ouvre le panneau de gestion : achat, équipements, travail agricole, protection et stockage. En vue agrandie, sélectionner une parcelle ramène au panneau de gestion. Sur mobile, la page rejoint ce panneau après son chargement.
+Cliquer sur le sol ou un numéro ouvre le panneau de gestion : achat, équipements, travail agricole, protection et stockage. En vue agrandie, sélectionner une parcelle ramène au panneau de gestion. Sur mobile, la page rejoint ce panneau après son chargement.
 
 Les filtres mettent en évidence les terres possédées, à vendre ou en activité. Les badges indiquent propriété, sélection, activité et risque météo. Les numéros trop rapprochés sont espacés ou masqués ; zoomer permet de rejoindre tous les terrains.
 
 Chaque étape agricole transforme réellement le terrain. Les champs passent de la jachère aux sillons labourés, puis aux jeunes pousses, à la culture fertilisée et enfin aux rangées dorées prêtes à récolter. Les forêts montrent d'abord les souches, puis des arbres qui grandissent ; les vignes passent des piquets nus aux rangs feuillus et aux grappes mûres. Pendant une action, une petite machine traverse progressivement la parcelle en suivant l'avancement réel du travail.
 
 La carte est exclusivement en 3D. Si l'accélération graphique n'est pas disponible, l'interface affiche une explication et permet de relancer la scène. La page d'accueil contient elle aussi une preview Three.js manipulable : glisser pour tourner, utiliser la molette ou le pincement pour zoomer, puis cliquer sur une parcelle pour entrer dans l'exploitation.
+
+## Relief et effets
+
+Les collines suivent une hauteur commune à toute la scène. Les surfaces sont
+subdivisées avant déformation ; les cultures, contours et points d'ancrage des
+numéros suivent cette même hauteur. Les berges restent au niveau de l'eau.
+Les numéros 2, 5, 45 et 47 ont un décalage manuel ; un trait relie une étiquette
+éloignée à son point d'ancrage pour garder l'association lisible en rotation.
+
+Les machines effectuent un aller-retour sur un passage continu calculé à
+l'intérieur du polygone, avec une marge pour leur encombrement. Elles suivent
+la hauteur et la normale de la pente. Les bâtiments ont une fondation horizontale.
+
+La météo du calendrier pilote la scène : pluie et impacts adaptés au relief,
+orage avec éclairs, givre, brume froide, braseros sur les cultures protégées,
+ambiance de canicule et poussière. Un incendie signalé par le backend montre des
+flammes, de la fumée et une végétation noircie sur la parcelle concernée.
+Le panneau propose alors « Éteindre et protéger ». Voir le README pour ses règles.
 
 ## Lancement local
 
@@ -38,7 +56,7 @@ npm --prefix frontend run test:map
 npm --prefix frontend run build
 ```
 
-Les tests de carte nécessitent Node.js 22.18 ou ultérieur. Ils couvrent les 54 géométries, leur orientation et leur sélection par rayon, les contours concaves, la croissance des champs, le placement reproductible et les collisions entre numéros.
+Les tests de carte nécessitent Node.js 22.18 ou ultérieur. Ils couvrent les 54 géométries, leur orientation et leur sélection par rayon, les contours concaves, la croissance des champs, le placement reproductible, les collisions entre numéros, la continuité des pentes et les trajets des véhicules sur le relief.
 
 La scène Three.js est chargée à la demande côté navigateur. Les arbres et les rangées utilisent des instances partagées. Le rendu est limité à 45 images/s et à une densité de pixels de 1,75, suspendu lorsque l'onglet est caché ou la carte hors écran. Les ressources graphiques et les écouteurs sont libérés lors du changement de vue ou de page. La préférence de réduction des animations est respectée.
 

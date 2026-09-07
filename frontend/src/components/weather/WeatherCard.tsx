@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Sun, CloudRain, Snowflake, Flame, TriangleAlert } from "lucide-react";
+import { Sun, CloudRain, CloudLightning, Snowflake, Flame, TriangleAlert } from "lucide-react";
 import { Card, CardBody } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { InfoTip } from "@/components/ui/InfoTip";
@@ -22,6 +22,7 @@ const SEASON_LABELS: Record<string, string> = {
 const WEATHER_ICONS: Record<Weather, typeof Sun> = {
   normal: Sun,
   pluie: CloudRain,
+  orage: CloudLightning,
   gel: Snowflake,
   canicule: Flame,
 };
@@ -31,6 +32,7 @@ const SKY_GRADIENT = "linear-gradient(160deg, #5b9fdb 0%, #7fb8e6 55%, #a6cdec 1
 const WEATHER_ICON_COLORS: Record<Weather, string> = {
   normal: "text-amber-300",
   pluie: "text-slate-50",
+  orage: "text-indigo-100",
   gel: "text-cyan-100",
   canicule: "text-orange-200",
 };
@@ -38,6 +40,7 @@ const WEATHER_ICON_COLORS: Record<Weather, string> = {
 const WEATHER_ICON_COLORS_ON_WHITE: Record<Weather, string> = {
   normal: "text-amber-500",
   pluie: "text-blue-600",
+  orage: "text-indigo-600",
   gel: "text-cyan-600",
   canicule: "text-orange-600",
 };
@@ -45,6 +48,7 @@ const WEATHER_ICON_COLORS_ON_WHITE: Record<Weather, string> = {
 const WEATHER_ICON_ANIM: Record<Weather, string> = {
   normal: "",
   pluie: "animate-soft-pulse",
+  orage: "animate-soft-pulse",
   gel: "animate-frost-shimmer",
   canicule: "animate-heat-shimmer",
 };
@@ -129,9 +133,9 @@ export function WeatherCard() {
                   {today.day_of_month} {today.month_name}
                 </p>
               </div>
-              {today.weather === "pluie" && (
+              {(today.weather === "pluie" || today.weather === "orage") && (
                 <span className="ml-auto flex items-center gap-1 rounded-full bg-white/85 px-2.5 py-1 text-sm font-medium text-foreground/80">
-                  Actions ×{today.growth_multiplier.toFixed(2)}
+                  Croissance ×{today.growth_multiplier.toFixed(2)}
                   <InfoTip text="La pluie accélère la pousse des cultures en terre ce jour-ci — la récolte sera prête plus tôt qu'en temps normal." />
                 </span>
               )}

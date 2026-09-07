@@ -35,6 +35,8 @@ class ParcelResponse(BaseModel):
     fertilized: bool
     storage_level: int
     protected_today: bool
+    active_fire: bool = False
+    fire_damage_today: bool = False
     planted_seed_name: str | None
     growth_progress_percent: float | None
     soil_fertility: float

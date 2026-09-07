@@ -224,7 +224,17 @@
   pointer-events: none;
   overflow: hidden;
 }
+.plot-leader {
+  position: absolute;
+  top: 0;
+  left: 0;
+  height: 1px;
+  background: #344d3aaa;
+  transform-origin: left center;
+  pointer-events: none;
+}
 .plot-marker {
+  z-index: 1;
   position: absolute;
   top: 0;
   left: 0;

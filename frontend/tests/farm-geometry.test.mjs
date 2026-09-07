@@ -19,8 +19,51 @@ import {
   seededRandom,
 } from "../src/components/map/three/geometry.ts";
 import { PARCEL_PATHS } from "../src/data/parcelPaths.ts";
+import { WATER_REGIONS } from "../src/data/mapDecor.ts";
+import { createTerrain, drapeGeometry, terrainNormal, vehicleLane } from "../src/components/map/three/terrain.ts";
 
 globalThis.DOMParser = DOMParser;
+
+const water = WATER_REGIONS.flatMap((region) => mapShapes(region.d).map((shape) => shape.getPoints()));
+const heightAt = createTerrain(water);
+
+test("terrain has hills, continuous heights, and low water banks", () => {
+  let peak = 0;
+  for (let x = -54; x < 54; x += 1) for (let z = -54; z < 54; z += 1) {
+    const h = heightAt(x, z);
+    assert.ok(Number.isFinite(h) && h >= 0);
+    peak = Math.max(peak, h);
+    assert.ok(Math.abs(h - heightAt(x + 0.1, z)) < 0.13, `Abrupt slope at ${x}, ${z}`);
+    assert.ok(Math.abs(h - heightAt(x, z + 0.1)) < 0.13, `Abrupt slope at ${x}, ${z}`);
+    if (water.some((points) => containsPoint(points, x, -z))) assert.ok(h < 0.01);
+    assert.ok(terrainNormal(heightAt, x, z).y > 0.55);
+  }
+  assert.ok(peak > 6, "The hills must visibly rise above the flat coast");
+});
+
+test("all vehicle lanes keep wheels inside parcels and on raycastable relief", () => {
+  for (const { parcelId, d } of PARCEL_PATHS) {
+    const shapes = mapShapes(d), points = shapes[0].getPoints();
+    const lane = vehicleLane(points);
+    assert.ok(lane, `No work lane for parcel ${parcelId}`);
+    const source = new ExtrudeGeometry(shapes, { depth: 0.35, bevelEnabled: false });
+    source.rotateX(-Math.PI / 2);
+    const geometry = drapeGeometry(source, heightAt);
+    const material = new MeshBasicMaterial();
+    const mesh = new Mesh(geometry, material);
+    mesh.position.y = 0.18;
+    mesh.updateMatrixWorld();
+    for (let i = 0; i <= 40; i++) {
+      const p = lane[0].clone().lerp(lane[1], i / 40);
+      for (const dx of [-0.7, 0, 0.7]) for (const dy of [-0.7, 0, 0.7])
+        assert.ok(containsPoint(points, p.x + dx, p.y + dy), `Vehicle leaves parcel ${parcelId}`);
+      const hit = new Raycaster(new Vector3(p.x, 30, -p.y), new Vector3(0, -1, 0)).intersectObject(mesh)[0];
+      assert.ok(hit, `Missing terrain below vehicle on parcel ${parcelId}`);
+      assert.ok(Math.abs(hit.point.y - heightAt(p.x, -p.y) - 0.53) < 0.13, `Vehicle floats on parcel ${parcelId}`);
+    }
+    source.dispose(); geometry.dispose(); material.dispose();
+  }
+});
 
 test("the 54 original parcels remain unique, finite and triangulatable in world space", () => {
   assert.deepEqual(

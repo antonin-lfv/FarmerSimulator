@@ -3,6 +3,7 @@
 import {
   Sun,
   CloudRain,
+  CloudLightning,
   Snowflake,
   Flame,
   AlertTriangle,
@@ -17,6 +18,7 @@ import { cn } from "@/lib/utils";
 const WEATHER_ICONS: Record<Weather, typeof Sun> = {
   normal: Sun,
   pluie: CloudRain,
+  orage: CloudLightning,
   gel: Snowflake,
   canicule: Flame,
 };
@@ -24,6 +26,7 @@ const WEATHER_ICONS: Record<Weather, typeof Sun> = {
 const WEATHER_ICON_COLORS: Record<Weather, string> = {
   normal: "text-amber-500",
   pluie: "text-blue-600",
+  orage: "text-indigo-600",
   gel: "text-cyan-600",
   canicule: "text-orange-600",
 };

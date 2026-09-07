@@ -12,6 +12,8 @@ import {
   placeMarker,
   seededRandom,
 } from "./geometry";
+import { createWeatherEffects } from "./weatherEffects";
+import { createTerrain, drapeGeometry, terrainNormal, vehicleLane } from "./terrain";
 
 export type MapFilter = "all" | "owned" | "sale" | "active";
 export type MapCommand = "in" | "out" | "home" | "top" | "focus";
@@ -25,20 +27,25 @@ export interface SceneState {
 }
 interface Plot {
   id: number;
-  mesh: THREE.Mesh<THREE.ExtrudeGeometry, THREE.MeshStandardMaterial>;
+  mesh: THREE.Mesh<THREE.BufferGeometry, THREE.MeshStandardMaterial>;
   outline: THREE.LineLoop;
   decor: THREE.Group;
   signature: string;
   points: THREE.Vector2[];
   center: THREE.Vector3;
   label: HTMLButtonElement;
+  weatherDecor: THREE.Group;
+  weatherSignature: string;
+  lane: ReturnType<typeof vehicleLane>;
+  machine: THREE.Group | null;
+  leader: HTMLSpanElement;
 }
 
 const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
-  2: [-12, 0],
-  5: [12, 0],
-  45: [-14, 0],
-  47: [12, 12],
+  2: [-36, 0],
+  5: [36, 0],
+  45: [-42, 0],
+  47: [36, 36],
 };
 
 export function createFarmScene(
@@ -59,6 +66,9 @@ export function createFarmScene(
   renderer.setClearColor("#dce5d8");
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
   renderer.toneMappingExposure = 1.05;
+  const reducedMotion = window.matchMedia(
+    "(prefers-reduced-motion: reduce)",
+  ).matches;
   host.appendChild(renderer.domElement);
   const canvas = renderer.domElement;
   canvas.tabIndex = 0;
@@ -67,6 +77,7 @@ export function createFarmScene(
     "Carte 3D de la ferme. Glisser pour tourner, clic droit pour déplacer, molette pour zoomer. Flèches pour déplacer, plus et moins pour zoomer, R pour recentrer.",
   );
   const scene = new THREE.Scene();
+  const heightAt = createTerrain(WATER_REGIONS.flatMap((region) => mapShapes(region.d).map((shape) => shape.getPoints())));
   scene.fog = new THREE.Fog("#dce5d8", 230, 440);
   const camera = new THREE.PerspectiveCamera(38, 1, 0.5, 550);
   const controls = new OrbitControls(camera, canvas);
@@ -82,9 +93,10 @@ export function createFarmScene(
   controls.zoomSpeed = 0.8;
   const home = new THREE.Vector3(95, 118, 132);
   camera.position.copy(home);
-  controls.target.set(0, 0, 8);
+  controls.target.set(0, heightAt(0, 8), 8);
   controls.update();
-  scene.add(new THREE.HemisphereLight("#fff4df", "#769482", 2.7));
+  const hemisphere = new THREE.HemisphereLight("#fff4df", "#769482", 2.7);
+  scene.add(hemisphere);
   const sun = new THREE.DirectionalLight("#fff0d4", 3.4);
   sun.position.set(-55, 95, -35);
   sun.castShadow = true;
@@ -100,6 +112,14 @@ export function createFarmScene(
   sun.shadow.bias = -0.0005;
   sun.shadow.normalBias = 0.2;
   scene.add(sun);
+  const weatherEffects = createWeatherEffects(
+    scene,
+    renderer,
+    hemisphere,
+    sun,
+    reducedMotion,
+    heightAt,
+  );
 
   const materials = new Set<THREE.Material>();
   const geometries = new Set<THREE.BufferGeometry>();
@@ -120,6 +140,7 @@ export function createFarmScene(
   const cone = geometry(new THREE.ConeGeometry(1, 1, 7));
   const roofGeometry = geometry(new THREE.CylinderGeometry(1, 1, 1, 3));
   const cylinder = geometry(new THREE.CylinderGeometry(1, 1, 1, 10));
+  const sphere = geometry(new THREE.SphereGeometry(1, 8, 6));
   const trunkMat = material("#76604a"),
     leafMat = material("#ffffff"),
     cropMat = material("#ffffff");
@@ -130,6 +151,21 @@ export function createFarmScene(
     harvesterMat = material("#c7a543"),
     forestryMat = material("#b85f3b"),
     wheelMat = material("#303936");
+  const flameMat = new THREE.MeshStandardMaterial({
+    color: "#ffad42",
+    emissive: "#ff5b1f",
+    emissiveIntensity: 2.4,
+    toneMapped: false,
+    roughness: 0.7,
+  });
+  const smokeMat = new THREE.MeshStandardMaterial({
+    color: "#6f7974",
+    transparent: true,
+    opacity: 0.28,
+    depthWrite: false,
+  });
+  materials.add(flameMat);
+  materials.add(smokeMat);
   function block(
     parent: THREE.Object3D,
     geo: THREE.BufferGeometry,
@@ -142,15 +178,26 @@ export function createFarmScene(
     sz: number,
   ) {
     const mesh = new THREE.Mesh(geo, mat);
-    mesh.position.set(x, y, z);
+    mesh.position.set(x, y + (parent.userData.followsTerrain ? heightAt(x, z) : 0), z);
     mesh.scale.set(sx, sy, sz);
     mesh.castShadow = true;
     mesh.receiveShadow = true;
     parent.add(mesh);
     return mesh;
   }
-  block(scene, box, material("#b6a58a"), 0, -1.6, 0, 111, 3.2, 111);
-  block(scene, box, material("#c5c5a0"), 0, 0, 0, 111, 0.3, 111);
+  const baseSource = new THREE.BoxGeometry(111, 3.2, 111, 80, 1, 80);
+  baseSource.translate(0, -1.6, 0);
+  const base = geometry(drapeGeometry(baseSource, (x, z) => heightAt(x, z)));
+  baseSource.dispose();
+  const baseMesh = new THREE.Mesh(base, material("#b6a58a"));
+  scene.add(baseMesh);
+  const groundSource = new THREE.PlaneGeometry(111, 111, 90, 90);
+  groundSource.rotateX(-Math.PI / 2);
+  groundSource.translate(0, 0.15, 0);
+  const ground = new THREE.Mesh(geometry(drapeGeometry(groundSource, heightAt)), material("#c5c5a0"));
+  groundSource.dispose();
+  ground.receiveShadow = true;
+  scene.add(ground);
   const floor = block(
     scene,
     box,
@@ -203,21 +250,26 @@ export function createFarmScene(
   const plots: Plot[] = [];
   for (const { parcelId, d } of PARCEL_PATHS) {
     const shapes = mapShapes(d);
-    const geo = geometry(
-      new THREE.ExtrudeGeometry(shapes, { depth: 0.35, bevelEnabled: false }),
-    );
-    geo.rotateX(-Math.PI / 2);
+    const source = new THREE.ExtrudeGeometry(shapes, { depth: 0.35, bevelEnabled: false });
+    source.rotateX(-Math.PI / 2);
+    const geo = geometry(drapeGeometry(source, heightAt));
+    source.dispose();
     const mesh = new THREE.Mesh(geo, material("#afba79"));
     mesh.position.y = 0.18;
     mesh.receiveShadow = true;
     mesh.userData.parcelId = parcelId;
     scene.add(mesh);
     const points = shapes[0].getPoints();
-    const borderGeo = geometry(
-      new THREE.BufferGeometry().setFromPoints(
-        points.map((p) => new THREE.Vector3(p.x, 0.6, -p.y)),
-      ),
-    );
+    const borderPoints: THREE.Vector3[] = [];
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i], b = points[(i + 1) % points.length];
+      const steps = Math.max(1, Math.ceil(a.distanceTo(b) / 0.7));
+      for (let j = 0; j < steps; j++) {
+        const p = a.clone().lerp(b, j / steps);
+        borderPoints.push(new THREE.Vector3(p.x, heightAt(p.x, -p.y) + 0.6, -p.y));
+      }
+    }
+    const borderGeo = geometry(new THREE.BufferGeometry().setFromPoints(borderPoints));
     const lineMat = new THREE.LineBasicMaterial({
       color: "#eee5b9",
       transparent: true,
@@ -240,9 +292,12 @@ export function createFarmScene(
       );
       middle = candidates[0] ?? middle;
     }
-    const center = new THREE.Vector3(middle.x, 2.8, -middle.y);
+    const center = new THREE.Vector3(middle.x, heightAt(middle.x, -middle.y) + 2.8, -middle.y);
     const decor = new THREE.Group();
     scene.add(decor);
+    const weatherDecor = new THREE.Group();
+    weatherDecor.userData.followsTerrain = true;
+    scene.add(weatherDecor);
     const label = document.createElement("button");
     label.type = "button";
     label.className = "plot-marker";
@@ -250,6 +305,10 @@ export function createFarmScene(
     label.setAttribute("aria-label", `Sélectionner la parcelle ${parcelId}`);
     label.addEventListener("click", () => onSelect(parcelId));
     labelHost.appendChild(label);
+    const leader = document.createElement("span");
+    leader.className = "plot-leader";
+    leader.setAttribute("aria-hidden", "true");
+    labelHost.appendChild(leader);
     plots.push({
       id: parcelId,
       mesh,
@@ -259,24 +318,20 @@ export function createFarmScene(
       points,
       center,
       label,
+      weatherDecor,
+      weatherSignature: "",
+      lane: vehicleLane(points),
+      machine: null,
+      leader,
     });
   }
 
   function addWorkingMachine(
     plot: Plot,
-    bounds: THREE.Box2,
     ongoing: OngoingAction | undefined,
   ) {
-    if (!ongoing) return;
-    const progress = ongoing.progress_percent / 100;
+    if (!ongoing || !plot.lane) return;
     const machine = new THREE.Group();
-    const travel = Math.min(4, (bounds.max.x - bounds.min.x) * 0.22);
-    machine.position.set(
-      plot.center.x - travel + travel * 2 * progress,
-      0.75,
-      plot.center.z,
-    );
-    machine.rotation.y = progress > 0.5 ? Math.PI : 0;
     const bodyMaterial = ongoing.action_type.includes("récolter")
       ? harvesterMat
       : ongoing.action_type.includes("bois")
@@ -290,6 +345,7 @@ export function createFarmScene(
         wheel.rotation.x = Math.PI / 2;
       }
     plot.decor.add(machine);
+    plot.machine = machine;
   }
 
   function decorate(
@@ -297,6 +353,9 @@ export function createFarmScene(
     parcel: Parcel,
     ongoing: OngoingAction | undefined,
   ) {
+    plot.machine = null;
+    plot.decor.userData.followsTerrain = parcel.type_surface !== "entrepôt";
+    plot.decor.position.y = parcel.type_surface === "entrepôt" ? heightAt(plot.center.x, plot.center.z) : 0;
     // Shared geometry/materials are disposed once with the scene; only instances change here.
     for (const child of [...plot.decor.children]) {
       if (child instanceof THREE.InstancedMesh) child.dispose();
@@ -309,6 +368,14 @@ export function createFarmScene(
       const width = Math.min(5, (bounds.max.x - bounds.min.x) * 0.5);
       const depth = Math.min(7, (bounds.max.y - bounds.min.y) * 0.5);
       const { x, z } = plot.center;
+      const footprintHeights: number[] = [];
+      for (let dx = -width / 2; dx <= width / 2; dx += 0.4)
+        for (let dz = -depth / 2; dz <= depth / 2; dz += 0.4)
+          footprintHeights.push(heightAt(x + dx, z + dz));
+      const foundationTop = Math.max(...footprintHeights);
+      const foundationDepth = foundationTop - Math.min(...footprintHeights) + 0.25;
+      plot.decor.position.y = foundationTop;
+      block(plot.decor, box, darkMat, x, 0.55 - foundationDepth / 2, z, width + 0.15, foundationDepth, depth + 0.15);
       block(plot.decor, box, wallMat, x, 1.6, z, width, 2.1, depth);
       const roof = block(
         plot.decor,
@@ -384,7 +451,7 @@ export function createFarmScene(
       }
     }
     if (!positions.length) {
-      addWorkingMachine(plot, bounds, ongoing);
+      addWorkingMachine(plot, ongoing);
       return;
     }
     const dummy = new THREE.Object3D();
@@ -393,7 +460,7 @@ export function createFarmScene(
     if (stage === "field-tilled") {
       const furrows = new THREE.InstancedMesh(box, trunkMat, positions.length);
       positions.forEach((pos, i) => {
-        dummy.position.set(pos.x, 0.48, pos.z);
+        dummy.position.set(pos.x, heightAt(pos.x, pos.z) + 0.48, pos.z);
         dummy.scale.set(0.13, 0.08, 0.8);
         dummy.updateMatrix();
         furrows.setMatrixAt(i, dummy.matrix);
@@ -404,7 +471,7 @@ export function createFarmScene(
       const sparse = positions.filter((_, i) => i % 4 === 0);
       const stubble = new THREE.InstancedMesh(box, cropMat, sparse.length);
       sparse.forEach((pos, i) => {
-        dummy.position.set(pos.x, 0.55, pos.z);
+        dummy.position.set(pos.x, heightAt(pos.x, pos.z) + 0.55, pos.z);
         dummy.scale.set(0.12, 0.18 + (i % 3) * 0.04, 0.12);
         dummy.updateMatrix();
         stubble.setMatrixAt(i, dummy.matrix);
@@ -415,7 +482,7 @@ export function createFarmScene(
       const cleared = positions.filter((_, i) => i % 3 === 0);
       const stumps = new THREE.InstancedMesh(cylinder, trunkMat, cleared.length);
       cleared.forEach((pos, i) => {
-        dummy.position.set(pos.x, 0.58, pos.z);
+        dummy.position.set(pos.x, heightAt(pos.x, pos.z) + 0.58, pos.z);
         dummy.scale.set(0.28 + (i % 2) * 0.08, 0.3, 0.28 + (i % 2) * 0.08);
         dummy.updateMatrix();
         stumps.setMatrixAt(i, dummy.matrix);
@@ -424,7 +491,7 @@ export function createFarmScene(
     } else if (vineyard && stage === "vineyard-bare") {
       const posts = new THREE.InstancedMesh(cylinder, trunkMat, positions.length);
       positions.forEach((pos, i) => {
-        dummy.position.set(pos.x, 0.9, pos.z);
+        dummy.position.set(pos.x, heightAt(pos.x, pos.z) + 0.9, pos.z);
         dummy.scale.set(0.07, 1.15, 0.07);
         dummy.updateMatrix();
         posts.setMatrixAt(i, dummy.matrix);
@@ -445,7 +512,7 @@ export function createFarmScene(
           : vineyard
             ? 0.3 + progress * 0.75
             : 0.2 + progress * 0.85;
-        dummy.position.set(pos.x, 0.55 + height / 2 + (forest ? 0.45 : 0), pos.z);
+        dummy.position.set(pos.x, heightAt(pos.x, pos.z) + 0.55 + height / 2 + (forest ? 0.45 : 0), pos.z);
         dummy.scale.set(
           forest ? (0.45 + progress) * pos.scale : vineyard ? 0.25 + progress * 0.3 : 0.2,
           height,
@@ -471,7 +538,7 @@ export function createFarmScene(
           ),
         );
         if (trunks) {
-          dummy.position.y = 0.45 + height * 0.25;
+          dummy.position.y = heightAt(pos.x, pos.z) + 0.45 + height * 0.25;
           dummy.scale.set(0.12, 0.8 + progress, 0.12);
           dummy.updateMatrix();
           trunks.setMatrixAt(i, dummy.matrix);
@@ -482,7 +549,60 @@ export function createFarmScene(
       plot.decor.add(foliage);
       if (trunks) plot.decor.add(trunks);
     }
-    addWorkingMachine(plot, bounds, ongoing);
+    addWorkingMachine(plot, ongoing);
+  }
+
+  function decorateWeather(plot: Plot, parcel: Parcel) {
+    plot.weatherDecor.clear();
+    const fire = Boolean(parcel.active_fire);
+    if (!fire && (state.weather !== "gel" || !parcel.protected_today || !parcel.planted_seed_name)) return;
+    const offsets: [number, number][] = plot.lane
+      ? [0.3, 0.5, 0.7].map((t) => {
+          const p = plot.lane![0].clone().lerp(plot.lane![1], t);
+          return [p.x - plot.center.x, -p.y - plot.center.z];
+        })
+      : [[0, 0]];
+    for (const [x, z] of offsets) {
+      if (!containsPoint(plot.points, plot.center.x + x, -(plot.center.z + z))) continue;
+      block(
+        plot.weatherDecor,
+        cylinder,
+        darkMat,
+        plot.center.x + x,
+        0.58,
+        plot.center.z + z,
+        0.24,
+        0.35,
+        0.24,
+      );
+      const flame = block(
+        plot.weatherDecor,
+        cone,
+        flameMat,
+        plot.center.x + x,
+        fire ? 2.9 : 1.12,
+        plot.center.z + z,
+        fire ? 0.85 : 0.22,
+        fire ? 4.6 : 0.7,
+        fire ? 0.85 : 0.22,
+      );
+      flame.userData.weatherFlame = true;
+      flame.userData.baseScaleY = flame.scale.y;
+      const smoke = block(
+        plot.weatherDecor,
+        sphere,
+        smokeMat,
+        plot.center.x + x + 0.2,
+        fire ? 6.8 : 1.9,
+        plot.center.z + z,
+        fire ? 1.1 : 0.28,
+        fire ? 1.8 : 0.5,
+        fire ? 1.1 : 0.28,
+      );
+      smoke.castShadow = false;
+      smoke.userData.weatherSmoke = true;
+      smoke.userData.baseY = smoke.position.y;
+    }
   }
 
   let state: SceneState = {
@@ -493,10 +613,8 @@ export function createFarmScene(
     labels: true,
   };
   let hovered: number | null = null;
+  let actionSnapshotAt = performance.now();
   let disposed = false;
-  const reducedMotion = window.matchMedia(
-    "(prefers-reduced-motion: reduce)",
-  ).matches;
   let destination: { camera: THREE.Vector3; target: THREE.Vector3 } | null =
     null;
   function paint() {
@@ -518,6 +636,12 @@ export function createFarmScene(
         (state.filter === "active" && active);
       const color = new THREE.Color(fieldColor(parcel, plot.id));
       if (state.weather === "gel") color.lerp(new THREE.Color("#e4ece1"), 0.5);
+      if (state.weather === "canicule") color.lerp(new THREE.Color("#c3a36b"), 0.28);
+      if (parcel.fire_damage_today) color.lerp(new THREE.Color("#3e3530"), 0.7);
+      const wet = state.weather === "pluie" || state.weather === "orage";
+      if (wet) color.multiplyScalar(0.83);
+      plot.mesh.material.roughness = wet ? 0.48 : 0.95;
+      plot.mesh.material.metalness = wet ? 0.06 : 0;
       if (!matches) color.lerp(new THREE.Color("#bec4b2"), 0.75);
       plot.mesh.material.color.copy(color);
       plot.mesh.material.emissive.set(
@@ -537,35 +661,54 @@ export function createFarmScene(
       line.opacity =
         selected || parcel.is_purchased ? 1 : matches ? 0.45 : 0.15;
       plot.decor.visible = matches;
+      plot.weatherDecor.visible = matches;
       plot.label.dataset.selected = String(selected);
       plot.label.dataset.owned = String(parcel.is_purchased);
       plot.label.dataset.active = String(active);
       plot.label.dataset.risk = String(risk);
       plot.label.dataset.matches = String(matches);
       plot.label.setAttribute("aria-pressed", String(selected));
-      plot.label.title = `Parcelle ${plot.id} · ${parcel.type_surface} · ${parcel.superficie} ha · ${active ? actions.get(plot.id)!.action_type : parcel.is_purchased ? "Possédée" : "À vendre"}${risk ? " · À risque" : ""}`;
+      plot.label.title = `Parcelle ${plot.id} · ${parcel.type_surface} · ${parcel.superficie} ha · ${active ? actions.get(plot.id)!.action_type : parcel.is_purchased ? "Possédée" : "À vendre"}${parcel.active_fire ? " · Incendie" : risk ? " · À risque" : ""}`;
       const signature = [
         parcel.type_surface,
         parcel.planted_seed_name,
         Math.floor((parcel.growth_progress_percent ?? 0) / 10),
         parcel.parcel_next_action,
         parcel.fertilized,
+        state.weather,
+        parcel.protected_today,
+        parcel.fire_damage_today,
         actions.get(plot.id)?.action_type,
-        Math.floor((actions.get(plot.id)?.progress_percent ?? 0) / 10),
       ].join("|");
       if (plot.signature !== signature) {
         decorate(plot, parcel, actions.get(plot.id));
+        const frost = state.weather === "gel";
+        const dry = state.weather === "canicule";
+        if (frost || dry || parcel.fire_damage_today) {
+          const tint = new THREE.Color(parcel.fire_damage_today ? "#47372d" : frost ? "#e6f3f4" : "#c5aa68");
+          const amount = parcel.fire_damage_today ? 0.75 : frost ? (parcel.protected_today ? 0.25 : 0.7) : 0.24;
+          const instanceColor = new THREE.Color();
+          plot.decor.traverse((child) => {
+            if (!(child instanceof THREE.InstancedMesh) || !child.instanceColor) return;
+            for (let i = 0; i < child.count; i++) {
+              child.getColorAt(i, instanceColor);
+              child.setColorAt(i, instanceColor.lerp(tint, amount));
+            }
+            child.instanceColor.needsUpdate = true;
+          });
+        }
         plot.signature = signature;
       }
+      const weatherSignature = `${state.weather}|${parcel.protected_today}|${parcel.active_fire}|${parcel.planted_seed_name}`;
+      if (plot.weatherSignature !== weatherSignature) {
+        decorateWeather(plot, parcel);
+        plot.weatherSignature = weatherSignature;
+      }
     }
-    sun.intensity = state.weather === "pluie" ? 1.5 : 3.4;
-    sun.color.set(
-      state.weather === "gel"
-        ? "#e5f4ff"
-        : state.weather === "canicule"
-          ? "#ffc578"
-          : "#fff0d4",
+    (floor.material as THREE.MeshStandardMaterial).color.set(
+      state.weather === "orage" ? "#59666b" : state.weather === "pluie" ? "#9caaa4" : state.weather === "gel" ? "#dce9ed" : state.weather === "canicule" ? "#ead2a7" : "#dce5d8",
     );
+    weatherEffects.set(state.weather);
   }
   const raycaster = new THREE.Raycaster();
   const pointer = new THREE.Vector2();
@@ -640,7 +783,7 @@ export function createFarmScene(
     } else if (action === "home")
       destination = {
         camera: home.clone(),
-        target: new THREE.Vector3(0, 0, 8),
+        target: new THREE.Vector3(0, heightAt(0, 8), 8),
       };
     else if (action === "top")
       destination = {
@@ -650,7 +793,7 @@ export function createFarmScene(
     else {
       const plot = plots.find((p) => p.id === state.selectedId);
       if (!plot) return;
-      const target = plot.center.clone().setY(0);
+      const target = plot.center.clone().setY(heightAt(plot.center.x, plot.center.z));
       destination = {
         camera: target.clone().add(new THREE.Vector3(25, 38, 38)),
         target,
@@ -759,7 +902,44 @@ export function createFarmScene(
     controls.update();
     if (compass)
       compass.style.transform = `rotate(${(-controls.getAzimuthalAngle() * 180) / Math.PI - 45}deg)`;
+    if (!destination) {
+      const targetHeight = heightAt(controls.target.x, controls.target.z);
+      camera.position.y += targetHeight - controls.target.y;
+      controls.target.y = targetHeight;
+    }
+    camera.position.y = Math.max(camera.position.y, heightAt(camera.position.x, camera.position.z) + 3);
+    camera.updateMatrixWorld();
     if (!reducedMotion) ripples.position.z = Math.sin(time * 0.0005) * 0.5;
+    weatherEffects.update(time, delta);
+    for (const plot of plots) {
+      const action = state.ongoingActions.find((item) => item.parcel_id === plot.id);
+      if (!action || !plot.machine || !plot.lane) continue;
+      const initial = action.progress_percent / 100;
+      const duration = action.remaining_minutes * 60 / Math.max(0.001, 1 - initial);
+      const progress = Math.min(1, initial + (reducedMotion ? 0 : (performance.now() - actionSnapshotAt) / 1000 / Math.max(1, duration)));
+      const phase = progress * 2;
+      const t = phase > 1 ? 2 - phase : phase;
+      const [a, b] = plot.lane;
+      const x = THREE.MathUtils.lerp(a.x, b.x, t), z = -THREE.MathUtils.lerp(a.y, b.y, t);
+      const normal = terrainNormal(heightAt, x, z);
+      const forward = new THREE.Vector3(b.x - a.x, 0, a.y - b.y).multiplyScalar(phase > 1 ? -1 : 1);
+      forward.addScaledVector(normal, -forward.dot(normal)).normalize();
+      const side = new THREE.Vector3().crossVectors(forward, normal).normalize();
+      plot.machine.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(forward, normal, side));
+      plot.machine.position.set(x, heightAt(x, z) + 0.68, z);
+    }
+    if (!reducedMotion) {
+      for (const plot of plots) {
+        plot.weatherDecor.traverse((child) => {
+          if (child.userData.weatherFlame)
+            child.scale.y = child.userData.baseScaleY * (0.9 + Math.sin(time * 0.012 + plot.id) * 0.15);
+          if (child.userData.weatherSmoke) {
+            child.position.y += delta * 0.13;
+            if (child.position.y > child.userData.baseY + 0.55) child.position.y = child.userData.baseY;
+          }
+        });
+      }
+    }
     const occupied: { x: number; y: number }[] = [];
     // Keep markers distinct at every zoom level; selection and owned land get priority.
     const labelOrder = [...plots].sort(
@@ -779,6 +959,7 @@ export function createFarmScene(
         Math.abs(projected.x) < 0.97 &&
         Math.abs(projected.y) < 0.95;
       plot.label.hidden = !shown;
+      plot.leader.hidden = true;
       if (shown) {
         const [offsetX, offsetY] = LABEL_SCREEN_OFFSETS[plot.id] ?? [0, 0];
         const x = ((projected.x + 1) / 2) * host.clientWidth + offsetX;
@@ -793,6 +974,14 @@ export function createFarmScene(
         if (position) {
           occupied.push(position);
           plot.label.style.transform = `translate(-50%, -50%) translate(${position.x}px, ${position.y}px)`;
+          const anchorX = ((projected.x + 1) / 2) * host.clientWidth;
+          const anchorY = ((-projected.y + 1) / 2) * host.clientHeight;
+          const dx = position.x - anchorX, dy = position.y - anchorY;
+          if (Math.hypot(dx, dy) > 18) {
+            plot.leader.hidden = false;
+            plot.leader.style.width = `${Math.hypot(dx, dy)}px`;
+            plot.leader.style.transform = `translate(${anchorX}px, ${anchorY}px) rotate(${Math.atan2(dy, dx)}rad)`;
+          }
         } else plot.label.hidden = true;
       }
     }
@@ -800,6 +989,7 @@ export function createFarmScene(
   });
   return {
     update(next: SceneState) {
+      if (next.ongoingActions !== state.ongoingActions) actionSnapshotAt = performance.now();
       state = next;
       paint();
     },
@@ -810,6 +1000,7 @@ export function createFarmScene(
       resize.disconnect();
       intersection.disconnect();
       controls.dispose();
+      weatherEffects.dispose();
       canvas.removeEventListener("pointerdown", down);
       canvas.removeEventListener("pointermove", move);
       canvas.removeEventListener("pointerup", up);

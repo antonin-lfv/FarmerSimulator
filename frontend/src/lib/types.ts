@@ -17,6 +17,8 @@ export interface Parcel {
   fertilized: boolean;
   storage_level: number;
   protected_today: boolean;
+  active_fire?: boolean;
+  fire_damage_today?: boolean;
   planted_seed_name: string | null;
   growth_progress_percent: number | null;
   soil_fertility: number;
@@ -169,7 +171,7 @@ export interface BulkActionResponse {
   balance_usd: number;
 }
 
-export type Weather = "normal" | "pluie" | "gel" | "canicule";
+export type Weather = "normal" | "pluie" | "orage" | "gel" | "canicule";
 
 export interface CalendarDay {
   day_index: number;
