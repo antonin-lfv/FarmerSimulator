@@ -34,6 +34,13 @@ interface Plot {
   label: HTMLButtonElement;
 }
 
+const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
+  2: [-12, 0],
+  5: [12, 0],
+  45: [-14, 0],
+  47: [12, 12],
+};
+
 export function createFarmScene(
   host: HTMLDivElement,
   labelHost: HTMLDivElement,
@@ -773,8 +780,9 @@ export function createFarmScene(
         Math.abs(projected.y) < 0.95;
       plot.label.hidden = !shown;
       if (shown) {
-        const x = ((projected.x + 1) / 2) * host.clientWidth;
-        const y = ((-projected.y + 1) / 2) * host.clientHeight;
+        const [offsetX, offsetY] = LABEL_SCREEN_OFFSETS[plot.id] ?? [0, 0];
+        const x = ((projected.x + 1) / 2) * host.clientWidth + offsetX;
+        const y = ((-projected.y + 1) / 2) * host.clientHeight + offsetY;
         const position = placeMarker(
           x,
           y,
