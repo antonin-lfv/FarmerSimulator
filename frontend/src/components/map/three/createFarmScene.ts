@@ -44,8 +44,8 @@ interface Plot {
 const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
   2: [-36, 0],
   5: [36, 0],
-  45: [-42, 0],
-  47: [36, 36],
+  45: [-72, 12],
+  47: [36, 88],
 };
 
 export function createFarmScene(

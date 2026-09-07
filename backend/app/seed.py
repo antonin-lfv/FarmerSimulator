@@ -11,8 +11,10 @@ from app.models import (
     GameState,
     MarketPrice,
     NotificationSettings,
+    OngoingAction,
     Pack,
     Parcel,
+    SeedMigration,
     TypeSurface,
     Vehicule,
     Wallet,
@@ -24,6 +26,9 @@ TYPE_SURFACES = ["champ", "forêt", "vigne", "entrepôt"]
 # Parcel 7 starts owned so a new game begins with a first field ready to work,
 # instead of forcing a purchase before anything else is possible.
 STARTING_PARCEL_ID = 7
+STARTING_FOREST_SEED_ITEM_ID = 38  # Pin: fast-growing, frost-resistant.
+STARTING_FOREST_GROWTH = 14.0
+MATURE_FORESTS_MIGRATION = "mature_forests_v1"
 
 # Superficie per parcel, measured from map/map.png (pixel area of each plot's
 # footprint, scaled so the median champ parcel lands on 10ha) — not a flat
@@ -44,7 +49,7 @@ PARCELS = [
     # champ: ~$1,200/ha
     *[(pid, ha, "champ", round(ha * 1_200.0), "labourer") for pid, ha in CHAMP_HA.items()],
     # forêt: ~$700/ha
-    *[(pid, ha, "forêt", round(ha * 700.0), "planter des arbres") for pid, ha in FORET_HA.items()],
+    *[(pid, ha, "forêt", round(ha * 700.0), "couper le bois") for pid, ha in FORET_HA.items()],
     # vigne: ~$4,200/ha — vineyards command a premium
     *[(pid, ha, "vigne", round(ha * 4_200.0), "planter des vignes") for pid, ha in VIGNE_HA.items()],
     # entrepôt: $18,000 flat (a building, not per-hectare), no crop cycle
@@ -237,6 +242,23 @@ def seed_if_empty(db: Session) -> None:
             for item_id, category, subcategory, name, price, promotion, img_path in CATALOG
         )
         db.flush()
+
+    # Existing saves receive this visual/gameplay upgrade once. Afterwards,
+    # harvested forests return to their normal planting and growth cycle.
+    if db.get(SeedMigration, MATURE_FORESTS_MIGRATION) is None:
+        forest_id = db.query(TypeSurface).filter(TypeSurface.type_surface == "forêt").one().type_surface_id
+        busy_ids = {
+            parcel_id for (parcel_id,) in db.query(OngoingAction.parcel_id).all()
+        }
+        for parcel in db.query(Parcel).filter(Parcel.type_surface_id == forest_id).all():
+            if parcel.parcel_id in busy_ids:
+                continue
+            parcel.parcel_next_action = "couper le bois"
+            parcel.planted_seed_item_id = STARTING_FOREST_SEED_ITEM_ID
+            parcel.growth_progress = STARTING_FOREST_GROWTH
+            parcel.yield_health = 100.0
+            parcel.fertilized = False
+        db.add(SeedMigration(migration_id=MATURE_FORESTS_MIGRATION))
 
     if db.query(Action).count() == 0:
         surface_ids = {

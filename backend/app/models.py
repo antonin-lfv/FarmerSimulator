@@ -70,6 +70,13 @@ class FireEvent(Base):
     parcel_id: Mapped[int] = mapped_column(Integer, ForeignKey("parcels.parcel_id"), nullable=False)
 
 
+class SeedMigration(Base):
+    """Records one-time save upgrades performed by seed_if_empty."""
+    __tablename__ = "seed_migrations"
+
+    migration_id: Mapped[str] = mapped_column(String, primary_key=True)
+
+
 class Catalog(Base):
     __tablename__ = "catalog"
 

@@ -50,6 +50,10 @@ docker compose up -d --build backend frontend caddy
   partagent la même altitude. Les entrepôts reposent sur des fondations planes.
 - Les machines suivent un passage intérieur à leur parcelle et s'inclinent avec
   la pente. Leur avancement visuel suit la durée réelle de l'action.
+- Toutes les forêts sont initialement matures et prêtes à être coupées : elles
+  donnent du relief dès le départ et permettent de récolter puis vendre du bois
+  immédiatement après l'achat d'une parcelle forestière. Après la première
+  coupe, le cycle normal de plantation et de croissance reprend.
 - Pluie avec traînées et impacts au sol ; orage avec pluie, brouillard et éclairs ;
   gel avec givre et braseros sur les cultures protégées ; canicule avec teintes
   chaudes et particules de poussière. Les effets ne capturent pas les clics.

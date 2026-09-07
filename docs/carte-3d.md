@@ -31,6 +31,10 @@ Les machines effectuent un aller-retour sur un passage continu calculé à
 l'intérieur du polygone, avec une marge pour leur encombrement. Elles suivent
 la hauteur et la normale de la pente. Les bâtiments ont une fondation horizontale.
 
+Les forêts d'une nouvelle partie sont déjà matures et récoltables. Cette mise à
+niveau est aussi appliquée une seule fois aux anciennes sauvegardes ; après une
+coupe, la parcelle reprend son cycle normal avec plantation puis croissance.
+
 La météo du calendrier pilote la scène : pluie et impacts adaptés au relief,
 orage avec éclairs, givre, brume froide, braseros sur les cultures protégées,
 ambiance de canicule et poussière. Un incendie signalé par le backend montre des
