@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./farm.css";
 
 :root {
   --background: #ffffff;

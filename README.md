@@ -4,14 +4,14 @@
   <br>
 </h1>
 
-<h4 align="center">Simulateur de gestion agricole : parcelles, actions temporisées, boutique, inventaire et marché dynamique, avec une carte interactive.</h4>
+<h4 align="center">Simulateur de gestion agricole : parcelles, actions temporisées, boutique, inventaire et marché dynamique, avec une carte 3D interactive.</h4>
 
 
-![Tableau de bord Verdance](docs/screenshots/dashboard.png)
+[Découvrir la carte 3D et ses commandes](docs/carte-3d.md)
 
 ## Stack
 
-- **Frontend** : Next.js (App Router) + TypeScript + Tailwind CSS — `frontend/`
+- **Frontend** : Next.js (App Router) + TypeScript + Tailwind CSS + Three.js — `frontend/`
 - **Backend** : FastAPI + SQLAlchemy — `backend/app/`
 - **Base de données** : PostgreSQL
 - Tout tourne via **Docker Compose**

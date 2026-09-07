@@ -1,0 +1,1074 @@
+/* The farm is a workspace: quiet chrome, an expansive landscape, contextual tools. */
+.game-shell {
+  min-height: 100dvh;
+  padding: 76px 0 0 88px;
+  background: #f6f7f2;
+}
+.game-main {
+  padding: 32px;
+}
+.game-main-immersive {
+  min-width: 0;
+}
+.farm-navigation {
+  position: fixed;
+  inset: 0 auto 0 0;
+  z-index: 40;
+  width: 88px;
+  background: #203e32;
+  color: #eaf1e8;
+  display: flex;
+  align-items: center;
+  flex-direction: column;
+  padding: 20px 8px 14px;
+}
+.farm-logo {
+  width: 44px;
+  height: 44px;
+  border-radius: 15px;
+  background: #dce9c7;
+  color: #284d36;
+  display: grid;
+  place-items: center;
+  margin-bottom: 28px;
+}
+.farm-navigation nav {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  width: 100%;
+}
+.farm-navigation nav a {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 12px 2px;
+  border-radius: 11px;
+  color: #b9c9bd;
+  transition:
+    background 0.2s,
+    color 0.2s;
+  font-size: 10px;
+  font-weight: 500;
+}
+.farm-navigation nav a:hover {
+  background: #ffffff0c;
+  color: white;
+}
+.farm-navigation nav a.active {
+  background: #dce9c7;
+  color: #264632;
+}
+.farm-nav-footer {
+  margin-top: auto;
+  padding-top: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  color: #bfd0be;
+}
+.game-topbar {
+  height: 76px;
+  position: fixed;
+  top: 0;
+  left: 88px;
+  right: 0;
+  z-index: 30;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  padding: 0 28px;
+  background: #fdfdf8;
+  border-bottom: 1px solid #e4e7dc;
+}
+.game-wordmark {
+  font-size: 30px;
+  font-weight: 650;
+  letter-spacing: -1.6px;
+  line-height: 1;
+  color: #254632;
+}
+.game-wordmark > span {
+  display: block;
+  font-size: 8px;
+  letter-spacing: 1.9px;
+  font-weight: 500;
+  color: #84907b;
+  margin-top: 7px;
+}
+.game-topbar .text-white {
+  color: #2f4735;
+}
+.game-topbar .text-white\/85,
+.game-topbar .text-white\/50,
+.game-topbar .text-white\/60,
+.game-topbar .text-white\/75,
+.game-topbar .text-white\/70,
+.game-topbar .text-brand-200 {
+  color: #64765d;
+}
+.game-topbar .bg-white\/10 {
+  background: #eef1e6;
+}
+.game-topbar .hover\:bg-white\/10:hover {
+  background: #e7eddf;
+}
+.farm-heading {
+  min-height: 112px;
+  padding: 24px 30px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+}
+.farm-eyebrow {
+  font-size: 9px;
+  font-weight: 650;
+  letter-spacing: 1.65px;
+  color: #7c8a6e;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.farm-eyebrow > span {
+  width: 5px;
+  height: 5px;
+  background: #799653;
+  border-radius: 50%;
+}
+.farm-heading h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 32px;
+  letter-spacing: -0.9px;
+  color: #293e2b;
+  line-height: 1.15;
+  margin-top: 8px;
+}
+.farm-heading-stats {
+  display: flex;
+  gap: 30px;
+  font-size: 12px;
+  color: #86917e;
+}
+.farm-heading-stats > div {
+  display: grid;
+  grid-template-columns: 20px auto;
+  column-gap: 9px;
+  align-items: center;
+}
+.farm-heading-stats svg {
+  grid-row: span 2;
+  color: #7b8d64;
+}
+.farm-heading-stats strong {
+  font-size: 20px;
+  line-height: 1.2;
+  font-weight: 600;
+  color: #314c36;
+}
+.farm-heading-stats span {
+  font-size: 10px;
+}
+.farm-workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 318px;
+  min-height: 660px;
+  border-top: 1px solid #e4e7dc;
+}
+.farm-manager-immersive .farm-workspace {
+  height: calc(100dvh - 188px);
+  min-height: 520px;
+}
+.farm-map-area {
+  position: relative;
+  min-height: 600px;
+  min-width: 0;
+  background: #dce5d8;
+}
+.farm-manager-immersive .farm-map-area {
+  min-height: 0;
+}
+.farm-viewport {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  min-height: inherit;
+  overflow: hidden;
+  background: #dce5d8;
+}
+.farm-viewport.is-expanded {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  width: 100vw;
+  height: 100dvh;
+}
+.farm-canvas,
+.farm-labels {
+  position: absolute;
+  inset: 0;
+}
+.farm-canvas canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  cursor: grab;
+  touch-action: none;
+  outline-offset: -4px;
+}
+.farm-canvas canvas:focus-visible {
+  outline: 2px solid #355e41;
+}
+.farm-labels {
+  pointer-events: none;
+  overflow: hidden;
+}
+.plot-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: auto;
+  border-radius: 7px;
+  min-width: 24px;
+  height: 22px;
+  padding: 0 5px;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 9px;
+  font-weight: 600;
+  color: #fffef0;
+  border: 1px solid #ffffff35;
+  background: #334c35a6;
+  box-shadow: 0 2px 5px #23352b20;
+  backdrop-filter: blur(5px);
+  cursor: pointer;
+  transition:
+    background 0.15s,
+    color 0.15s;
+}
+.plot-marker:hover {
+  background: #ffffec;
+  color: #274931;
+}
+.plot-marker[data-owned="true"] {
+  background: #f8efc7;
+  color: #355030;
+  border-color: #fff9d9;
+}
+.plot-marker[data-active="true"]::after {
+  content: "";
+  position: absolute;
+  right: -3px;
+  top: -3px;
+  width: 7px;
+  height: 7px;
+  border-radius: 100%;
+  background: #75b05b;
+  border: 1px solid white;
+}
+.plot-marker[data-risk="true"] {
+  border: 2px solid #d97a49;
+}
+.plot-marker[data-selected="true"] {
+  background: #fffbed;
+  color: #254332;
+  box-shadow:
+    0 0 0 3px #ffffdf55,
+    0 3px 12px #203e3240;
+  z-index: 2;
+}
+.map-top-controls {
+  position: absolute;
+  top: 22px;
+  left: 22px;
+  right: 22px;
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 12px;
+  pointer-events: none;
+}
+.map-filters,
+.map-view-switch {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 3px;
+  padding: 4px;
+  border: 1px solid #fff9;
+  background: #fafcf0e8;
+  border-radius: 9px;
+  box-shadow: 0 3px 12px #2c48200a;
+  pointer-events: auto;
+  backdrop-filter: blur(14px);
+}
+.map-filters button,
+.map-view-switch button {
+  padding: 8px 10px;
+  font-size: 10px;
+  font-weight: 500;
+  color: #68785d;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+.map-filters button[aria-pressed="true"],
+.map-view-switch button[aria-pressed="true"] {
+  background: #304d36;
+  color: #ffffef;
+}
+.map-view-switch {
+  flex-shrink: 0;
+  flex-wrap: nowrap;
+}
+.map-view-switch button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+.map-compass {
+  position: absolute;
+  left: 25px;
+  bottom: 76px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  color: #53694e;
+  pointer-events: none;
+}
+.map-compass span {
+  font-size: 7px;
+  letter-spacing: 2px;
+}
+.map-tools {
+  position: absolute;
+  right: 22px;
+  bottom: 76px;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  border: 1px solid #fff9;
+  background: #fbfcf1eb;
+  padding: 5px;
+  border-radius: 10px;
+  box-shadow: 0 4px 20px #304d3610;
+  backdrop-filter: blur(10px);
+}
+.map-tools button {
+  width: 32px;
+  height: 32px;
+  display: grid;
+  place-items: center;
+  border-radius: 6px;
+  color: #53664b;
+  cursor: pointer;
+}
+.map-tools button:hover,
+.map-tools button[aria-pressed="true"] {
+  background: #e0e9d4;
+}
+.map-tools button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+.map-tools > span {
+  border-top: 1px solid #dbe1d0;
+  margin: 2px 5px;
+}
+.map-bottom-controls {
+  position: absolute;
+  left: 22px;
+  right: 22px;
+  bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: center;
+}
+.map-legend {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 16px;
+  background: #fafcefdb;
+  backdrop-filter: blur(8px);
+  padding: 11px 14px;
+  border: 1px solid #fff7;
+  border-radius: 8px;
+}
+.map-legend span {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 9px;
+  color: #526448;
+}
+.map-legend i {
+  width: 7px;
+  height: 7px;
+  border-radius: 2px;
+}
+.map-legend .owned {
+  background: #d5c58b;
+}
+.map-legend .sale {
+  background: #547258;
+}
+.map-legend .active {
+  background: #87b560;
+}
+.map-legend .risk {
+  background: #d98b52;
+}
+.map-help-button {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  border-radius: 8px;
+  background: #fafcefdb;
+  padding: 11px;
+  color: #53664b;
+  font-size: 10px;
+  cursor: pointer;
+}
+.map-help {
+  position: absolute;
+  z-index: 5;
+  bottom: 70px;
+  right: 70px;
+  padding: 24px;
+  border: 1px solid #dce4d4;
+  border-radius: 14px;
+  background: #fffff4f5;
+  box-shadow: 0 10px 40px #203e3220;
+  max-width: calc(100% - 90px);
+}
+.map-help h3 {
+  font-family: Georgia, serif;
+  font-size: 21px;
+  margin-bottom: 14px;
+  color: #304a31;
+}
+.map-help p {
+  font-size: 11px;
+  line-height: 1.8;
+  color: #6b7762;
+}
+.map-help > button {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  cursor: pointer;
+}
+.map-invitation {
+  position: absolute;
+  top: 82px;
+  left: 24px;
+  display: flex;
+  gap: 7px;
+  align-items: center;
+  color: #596e4f;
+  font-size: 10px;
+  pointer-events: none;
+}
+.map-loading {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  color: #647b51;
+  background: #dce5d8;
+  font-size: 13px;
+}
+.farm-flat-map {
+  height: 100%;
+  overflow: auto;
+  padding: 80px 28px 28px;
+}
+.farm-flat-map > div {
+  max-width: 850px;
+  margin: auto;
+}
+.map-fallback-notice {
+  font-size: 12px;
+  padding: 12px;
+  background: #fff5ce;
+  border-radius: 8px;
+  margin-bottom: 12px;
+}
+.map-flat-close {
+  position: absolute;
+  right: 22px;
+  bottom: 22px;
+  background: white;
+  padding: 12px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+.farm-inspector {
+  scroll-margin-top: 76px;
+  min-width: 0;
+  overflow-y: auto;
+  background: #fcfcf6;
+  border-left: 1px solid #e0e5d6;
+  scrollbar-width: thin;
+  scrollbar-color: #d4dcc9 transparent;
+}
+.inspector-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24px 22px 20px;
+  border-bottom: 1px solid #e9ecdf;
+  gap: 8px;
+}
+.inspector-heading h2 {
+  font-size: 13px;
+  font-weight: 600;
+  color: #324b35;
+}
+.inspector-heading button {
+  cursor: pointer;
+  color: #6c7a62;
+}
+.live-badge {
+  font-size: 7px;
+  letter-spacing: 1px;
+  color: #63874c;
+  border: 1px solid #e0e9d2;
+  background: #eff5e6;
+  border-radius: 4px;
+  padding: 4px 6px;
+}
+.farm-welcome {
+  padding: 18px 24px 24px;
+  border-bottom: 1px solid #e9ecdf;
+}
+.farm-welcome-art {
+  height: 112px;
+  display: grid;
+  place-items: center;
+  position: relative;
+  color: #6b8152;
+  margin-bottom: 10px;
+  background: radial-gradient(
+    ellipse at center,
+    #e4ebd5 0,
+    #edf1e3 35%,
+    transparent 68%
+  );
+}
+.welcome-orbit {
+  position: absolute;
+  width: 90px;
+  height: 90px;
+  border: 1px solid #bdcda74d;
+  border-radius: 50%;
+  transform: rotateX(55deg) translateY(24px);
+}
+.farm-welcome h3 {
+  font-family: Georgia, serif;
+  font-size: 24px;
+  line-height: 1.23;
+  letter-spacing: -0.5px;
+  color: #344b33;
+}
+.farm-welcome p {
+  font-size: 11px;
+  line-height: 1.85;
+  color: #839075;
+  margin: 12px 0 19px;
+}
+.farm-primary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 8px;
+  background: #365639;
+  color: #fffff2;
+  padding: 12px 14px;
+  font-size: 11px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.farm-primary-button:hover {
+  background: #25442c;
+}
+.farm-primary-button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+.farm-welcome .farm-primary-button {
+  width: 100%;
+}
+.inspector-section {
+  padding: 22px 24px;
+  border-bottom: 1px solid #e9ecdf;
+}
+.inspector-section-title {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 12px;
+  color: #43583a;
+  margin-bottom: 16px;
+}
+.inspector-section-title h3 {
+  font-weight: 600;
+}
+.inspector-section-title > span {
+  font-size: 10px;
+  padding: 2px 7px;
+  background: #edf1e4;
+  border-radius: 5px;
+}
+.land-summary {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 0;
+  font-size: 11px;
+  color: #819073;
+}
+.land-summary strong {
+  margin-left: auto;
+  font-weight: 500;
+  color: #3d5434;
+}
+.land-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 3px;
+  background: #c7bb7f;
+}
+.land-forêt {
+  background: #648558;
+}
+.land-vigne {
+  background: #a0ad7a;
+}
+.land-entrepôt {
+  background: #bcaa95;
+}
+.inspector-empty {
+  font-size: 11px;
+  line-height: 1.9;
+  color: #8b957f;
+}
+.activity-row {
+  display: block;
+  width: 100%;
+  text-align: left;
+  padding: 12px 0;
+  cursor: pointer;
+}
+.activity-row > div:first-child {
+  display: flex;
+  justify-content: space-between;
+  font-size: 11px;
+  color: #516644;
+}
+.activity-row strong {
+  font-weight: 500;
+}
+.activity-row span,
+.activity-row p {
+  font-size: 10px;
+  color: #839175;
+}
+.activity-row p {
+  margin: 4px 0 8px;
+}
+.activity-progress {
+  height: 4px;
+  border-radius: 3px;
+  background: #e8ecdf;
+  overflow: hidden;
+}
+.activity-progress i {
+  display: block;
+  height: 100%;
+  background: #91ab6b;
+}
+.farm-tip {
+  margin: 22px;
+  border-radius: 9px;
+  background: #eef2e5;
+  padding: 14px;
+  display: flex;
+  gap: 10px;
+  color: #6a8355;
+}
+.farm-tip svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+.farm-tip p {
+  font-size: 10px;
+  line-height: 1.7;
+}
+.farm-tip span {
+  color: #8b997d;
+}
+.inspector-back {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 11px;
+}
+.farm-inspector > .rounded-xl {
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
+}
+.farm-inspector .text-sm {
+  font-size: 12px;
+}
+.farm-inspector .text-xs {
+  font-size: 10px;
+}
+.farm-inspector .text-lg {
+  font-size: 18px;
+}
+.farm-inspector .p-5 {
+  padding: 20px;
+}
+.farm-inspector .p-6 {
+  padding: 22px;
+}
+.parcel-load-error {
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  font-size: 12px;
+  color: #95643f;
+}
+@media (min-width: 1600px) {
+  .farm-workspace {
+    grid-template-columns: minmax(0, 1fr) 360px;
+  }
+  .farm-welcome {
+    padding: 24px 30px;
+  }
+  .farm-welcome-art {
+    height: 145px;
+  }
+  .farm-welcome h3 {
+    font-size: 28px;
+  }
+}
+@media (max-width: 1150px) {
+  .farm-workspace {
+    grid-template-columns: minmax(0, 1fr) 280px;
+  }
+  .map-filters button {
+    padding: 7px;
+    font-size: 9px;
+  }
+  .map-top-controls {
+    left: 14px;
+    right: 14px;
+    gap: 6px;
+  }
+  .farm-heading-stats {
+    gap: 18px;
+  }
+  .game-topbar {
+    padding: 0 20px;
+  }
+  .game-wordmark > span {
+    display: none;
+  }
+  .map-legend {
+    gap: 9px;
+    padding: 10px;
+  }
+  .map-help-button span {
+    display: none;
+  }
+}
+@media (max-width: 900px) {
+  .game-shell {
+    padding-left: 70px;
+  }
+  .farm-navigation {
+    width: 70px;
+  }
+  .game-topbar {
+    left: 70px;
+  }
+  .farm-navigation nav a {
+    font-size: 8px;
+    padding: 11px 2px;
+  }
+  .farm-workspace {
+    grid-template-columns: minmax(0, 1fr) 250px;
+  }
+  .farm-heading {
+    padding: 24px 20px;
+  }
+  .farm-heading h1 {
+    font-size: 27px;
+  }
+  .farm-heading-stats > div:last-child {
+    display: none;
+  }
+  .farm-welcome {
+    padding: 18px;
+  }
+  .farm-welcome h3 {
+    font-size: 21px;
+  }
+  .map-filters {
+    max-width: 190px;
+  }
+  .map-invitation {
+    top: 114px;
+    font-size: 9px;
+  }
+  .map-legend {
+    max-width: 215px;
+  }
+  .farm-heading-stats {
+    gap: 15px;
+  }
+}
+@media (max-width: 700px) {
+  .game-shell {
+    padding: 65px 0 65px;
+  }
+  .game-topbar {
+    left: 0;
+    height: 65px;
+    gap: 8px;
+    padding: 0 14px;
+  }
+  .game-wordmark {
+    font-size: 24px;
+  }
+  .game-topbar .h-11 {
+    height: 34px;
+  }
+  .game-topbar .text-sm {
+    font-size: 11px;
+  }
+  .game-topbar .px-3\.5 {
+    padding-left: 10px;
+    padding-right: 10px;
+  }
+  .game-topbar [title^="Stockage"] {
+    display: none;
+  }
+  .farm-navigation {
+    top: auto;
+    right: 0;
+    width: auto;
+    height: 65px;
+    flex-direction: row;
+    padding: 6px;
+  }
+  .farm-logo,
+  .farm-nav-footer {
+    display: none;
+  }
+  .farm-navigation nav {
+    flex-direction: row;
+    overflow-x: auto;
+    gap: 3px;
+    justify-content: space-between;
+  }
+  .farm-navigation nav a {
+    min-width: 53px;
+    padding: 7px 5px;
+    gap: 4px;
+    font-size: 8px;
+  }
+  .farm-navigation nav a svg {
+    width: 18px;
+    height: 18px;
+  }
+  .farm-heading {
+    min-height: 99px;
+    padding: 18px 18px;
+    gap: 12px;
+  }
+  .farm-heading h1 {
+    font-size: 25px;
+  }
+  .farm-eyebrow {
+    font-size: 7px;
+    letter-spacing: 1px;
+  }
+  .farm-heading-stats {
+    gap: 12px;
+  }
+  .farm-heading-stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+  .farm-heading-stats svg {
+    display: none;
+  }
+  .farm-heading-stats strong {
+    font-size: 17px;
+  }
+  .farm-heading-stats span {
+    font-size: 8px;
+  }
+  .farm-workspace,
+  .farm-manager-immersive .farm-workspace {
+    display: flex;
+    flex-direction: column;
+    height: auto;
+    min-height: 0;
+  }
+  .farm-map-area,
+  .farm-manager-immersive .farm-map-area {
+    height: max(480px, 65dvh);
+    min-height: 480px;
+  }
+  .farm-inspector {
+    border-left: none;
+    border-top: 1px solid #e0e5d6;
+    overflow: visible;
+  }
+  .farm-welcome-art {
+    height: 85px;
+  }
+  .farm-welcome {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 12px;
+  }
+  .farm-welcome-art {
+    grid-row: span 2;
+    margin: 0;
+  }
+  .farm-welcome p {
+    margin: 0;
+  }
+  .farm-welcome .farm-primary-button {
+    grid-column: span 2;
+  }
+  .map-top-controls {
+    top: 14px;
+  }
+  .map-tools {
+    right: 14px;
+    bottom: 77px;
+  }
+  .map-bottom-controls {
+    left: 14px;
+    right: 14px;
+    bottom: 16px;
+  }
+  .map-legend {
+    max-width: none;
+    gap: 10px;
+  }
+  .map-legend span {
+    font-size: 8px;
+  }
+  .map-invitation {
+    left: 17px;
+    top: 100px;
+  }
+  .map-compass {
+    left: 17px;
+  }
+  .map-help {
+    right: 60px;
+    padding: 18px;
+  }
+  .map-help h3 {
+    font-size: 18px;
+  }
+  .game-main {
+    padding: 24px 16px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .farm-viewport *,
+  .farm-navigation * {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+.nav-month-short {
+  display: none;
+}
+@media (max-width: 700px) {
+  .game-topbar {
+    gap: 3px;
+    padding: 0 10px;
+  }
+  .game-topbar .game-wordmark {
+    font-size: 21px;
+  }
+  .game-topbar > .min-w-0.flex-1 {
+    display: none;
+  }
+  .game-topbar > .overflow-x-auto {
+    gap: 4px;
+    margin-left: auto;
+  }
+  .game-topbar .w-11 {
+    width: 28px;
+  }
+  .nav-time-weather {
+    padding: 0 5px;
+    gap: 4px;
+    border-radius: 6px;
+    box-shadow: none;
+    background: transparent;
+  }
+  .nav-time-weather > span:first-of-type > svg {
+    display: none;
+  }
+  .nav-month-full,
+  .nav-weather-label,
+  .nav-clock,
+  .nav-time-divider {
+    display: none;
+  }
+  .nav-month-short {
+    display: inline;
+  }
+  .map-filters {
+    max-width: 208px;
+  }
+  .map-filters button {
+    padding: 6px;
+    font-size: 9px;
+  }
+}
+
+.parcel-quick-select {
+  display: block;
+  padding: 15px 22px 0;
+}
+.parcel-quick-select > span {
+  display: block;
+  font-size: 9px;
+  color: #8a987e;
+  margin-bottom: 6px;
+}
+.parcel-quick-select select {
+  width: 100%;
+  padding: 9px;
+  border: 1px solid #dfe6d5;
+  border-radius: 7px;
+  color: #54694a;
+  background: #f7f9ef;
+  font-size: 10px;
+}

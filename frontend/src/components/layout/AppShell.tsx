@@ -7,7 +7,8 @@ import type { OngoingAction } from "@/lib/types";
 import { ToastProvider, useToast } from "@/components/ui/ToastProvider";
 import { CalendarProvider } from "@/lib/calendar-context";
 import { WalletProvider } from "@/lib/wallet-context";
-import { MarketTicker } from "@/components/market/MarketTicker";
+import { usePathname } from "next/navigation";
+import { FarmNavigation } from "@/components/layout/FarmNavigation";
 import { Navbar } from "@/components/layout/Navbar";
 
 export function AppShell({ children }: { children: React.ReactNode }) {
@@ -24,12 +25,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
 function AppShellInner({ children }: { children: React.ReactNode }) {
   useActionCompletionToasts();
+  const immersive = usePathname() === "/dashboard";
 
   return (
-    <div className="flex min-h-screen w-full flex-col pt-20">
+    <div className={`game-shell ${immersive ? "game-shell-immersive" : ""}`}>
+      <FarmNavigation />
       <Navbar />
-      <MarketTicker />
-      <main className="min-w-0 flex-1 bg-background px-4 py-6 md:px-8 md:py-8">{children}</main>
+      <main className={immersive ? "game-main-immersive" : "game-main"}>{children}</main>
     </div>
   );
 }
