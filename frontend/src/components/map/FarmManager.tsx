@@ -242,27 +242,6 @@ export function FarmManager({
           className="farm-inspector"
           aria-label="Gestion de l’exploitation"
         >
-          <label className="parcel-quick-select">
-            <span>Accès rapide à une parcelle</span>
-            <select
-              aria-label="Choisir une parcelle"
-              value={selectedId ?? ""}
-              onChange={(event) =>
-                event.target.value
-                  ? loadParcel(Number(event.target.value))
-                  : closeParcel()
-              }
-            >
-              <option value="">Explorer les parcelles…</option>
-              {parcels?.map((p) => (
-                <option value={p.parcel_id} key={p.parcel_id}>
-                  #{p.parcel_id} · {SURFACE_LABELS[p.type_surface]} ·{" "}
-                  {p.superficie} ha
-                  {p.is_purchased ? " · Possédée" : " · À vendre"}
-                </option>
-              ))}
-            </select>
-          </label>
           {selectedId !== null ? (
             <>
               <div className="inspector-heading">

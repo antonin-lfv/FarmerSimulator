@@ -31,6 +31,7 @@ export interface PossibleAction {
   action_id: number;
   action_type: string;
   action_time_minutes: number;
+  fixed_duration_seconds: number | null;
   next_action: string | null;
   requirements: ActionRequirement[];
 }

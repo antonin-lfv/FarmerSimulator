@@ -369,44 +369,9 @@
   right: 22px;
   bottom: 20px;
   display: flex;
-  justify-content: space-between;
+  justify-content: flex-end;
   gap: 10px;
   align-items: center;
-}
-.map-legend {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 16px;
-  background: #fafcefdb;
-  backdrop-filter: blur(8px);
-  padding: 11px 14px;
-  border: 1px solid #fff7;
-  border-radius: 8px;
-}
-.map-legend span {
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  font-size: 9px;
-  color: #526448;
-}
-.map-legend i {
-  width: 7px;
-  height: 7px;
-  border-radius: 2px;
-}
-.map-legend .owned {
-  background: #d5c58b;
-}
-.map-legend .sale {
-  background: #547258;
-}
-.map-legend .active {
-  background: #87b560;
-}
-.map-legend .risk {
-  background: #d98b52;
 }
 .map-help-button {
   display: flex;
@@ -830,10 +795,6 @@
   .game-wordmark > span {
     display: none;
   }
-  .map-legend {
-    gap: 9px;
-    padding: 10px;
-  }
   .map-help-button span {
     display: none;
   }
@@ -876,9 +837,6 @@
   .map-invitation {
     top: 114px;
     font-size: 9px;
-  }
-  .map-legend {
-    max-width: 215px;
   }
   .farm-heading-stats {
     gap: 15px;
@@ -1015,13 +973,6 @@
     right: 14px;
     bottom: 16px;
   }
-  .map-legend {
-    max-width: none;
-    gap: 10px;
-  }
-  .map-legend span {
-    font-size: 8px;
-  }
   .map-invitation {
     left: 17px;
     top: 100px;
@@ -1095,24 +1046,4 @@
     padding: 6px;
     font-size: 9px;
   }
-}
-
-.parcel-quick-select {
-  display: block;
-  padding: 15px 22px 0;
-}
-.parcel-quick-select > span {
-  display: block;
-  font-size: 9px;
-  color: #8a987e;
-  margin-bottom: 6px;
-}
-.parcel-quick-select select {
-  width: 100%;
-  padding: 9px;
-  border: 1px solid #dfe6d5;
-  border-radius: 7px;
-  color: #54694a;
-  background: #f7f9ef;
-  font-size: 10px;
 }

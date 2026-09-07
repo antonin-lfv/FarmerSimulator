@@ -1,5 +1,6 @@
 import time
 import unittest
+from unittest.mock import patch
 
 from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
@@ -72,6 +73,26 @@ class ActionLifecycleTests(unittest.TestCase):
         self.assertEqual(parcel.parcel_next_action, "semer")
         self.assertFalse(action_service._parcel_has_ongoing_action(self.db, 7))
         self.assertEqual(action_service.get_ongoing_actions(self.db), [])
+
+    def test_fast_clock_caps_an_action_started_with_normal_duration(self) -> None:
+        now = time.time()
+        self.db.add(
+            OngoingAction(
+                parcel_id=7,
+                action_type="labourer",
+                start_time=now - 1,
+                end_time=now + 3_600,
+                resources_used="[]",
+                cost=100,
+            )
+        )
+        self.db.commit()
+
+        with patch.object(action_service.settings, "debug_action_seconds", 10):
+            action_service.complete_finished_actions(self.db)
+
+        ongoing = self.db.query(OngoingAction).one()
+        self.assertEqual(ongoing.end_time, ongoing.start_time + 10)
 
 
 if __name__ == "__main__":

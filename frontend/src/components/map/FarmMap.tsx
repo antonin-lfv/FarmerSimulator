@@ -211,20 +211,6 @@ export function FarmMap(props: FarmMapProps) {
             </button>
           </div>
           <div className="map-bottom-controls">
-            <div className="map-legend">
-              <span>
-                <i className="owned" /> Vos parcelles
-              </span>
-              <span>
-                <i className="sale" /> À vendre
-              </span>
-              <span>
-                <i className="active" /> En activité
-              </span>
-              <span>
-                <i className="risk" /> À risque
-              </span>
-            </div>
             <button
               className="map-help-button"
               onClick={() => setHelp(!help)}

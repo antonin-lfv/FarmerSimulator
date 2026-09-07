@@ -42,22 +42,75 @@ export function seededRandom(seed: number) {
   };
 }
 
+export type FarmVisualStage =
+  | "warehouse"
+  | "field-fallow"
+  | "field-tilled"
+  | "field-growing"
+  | "field-fertilized"
+  | "field-ripe"
+  | "forest-cleared"
+  | "forest-growing"
+  | "forest-mature"
+  | "vineyard-bare"
+  | "vineyard-growing"
+  | "vineyard-mature";
+
+export function farmVisualStage(parcel: {
+  type_surface: string;
+  parcel_next_action: string | null;
+  planted_seed_name: string | null;
+  growth_progress_percent: number | null;
+  fertilized?: boolean;
+}): FarmVisualStage {
+  if (parcel.type_surface === "entrepôt") return "warehouse";
+  const planted = Boolean(parcel.planted_seed_name);
+  const mature = (parcel.growth_progress_percent ?? 0) >= 100;
+  if (parcel.type_surface === "forêt")
+    return !planted
+      ? "forest-cleared"
+      : mature
+        ? "forest-mature"
+        : "forest-growing";
+  if (parcel.type_surface === "vigne")
+    return !planted
+      ? "vineyard-bare"
+      : mature
+        ? "vineyard-mature"
+        : "vineyard-growing";
+  if (!planted)
+    return parcel.parcel_next_action === "semer"
+      ? "field-tilled"
+      : "field-fallow";
+  if (mature) return "field-ripe";
+  return parcel.fertilized ? "field-fertilized" : "field-growing";
+}
+
 export function fieldColor(
   parcel: {
     type_surface: string;
     parcel_next_action: string | null;
     planted_seed_name: string | null;
     growth_progress_percent: number | null;
+    fertilized?: boolean;
   },
   id: number,
 ) {
-  if (parcel.type_surface === "forêt") return "#5b7850";
-  if (parcel.type_surface === "vigne") return "#8e9771";
-  if (parcel.type_surface === "entrepôt") return "#cdc4a9";
-  if (parcel.planted_seed_name)
-    return (parcel.growth_progress_percent ?? 0) > 75 ? "#d4b85d" : "#92ac54";
-  if (parcel.parcel_next_action === "semer") return "#987957";
-  return ["#b7bf79", "#c1bb7c", "#a7b97b", "#9baa69", "#d0c28d"][id % 5];
+  const stage = farmVisualStage(parcel);
+  const colors: Partial<Record<FarmVisualStage, string>> = {
+    warehouse: "#cdc4a9",
+    "field-tilled": "#866344",
+    "field-growing": "#88a650",
+    "field-fertilized": "#729a43",
+    "field-ripe": "#d4b85d",
+    "forest-cleared": "#9a8a63",
+    "forest-growing": "#68805a",
+    "forest-mature": "#4f7048",
+    "vineyard-bare": "#a08c70",
+    "vineyard-growing": "#859267",
+    "vineyard-mature": "#74885c",
+  };
+  return colors[stage] ?? ["#b7bf79", "#c1bb7c", "#a7b97b", "#9baa69", "#d0c28d"][id % 5];
 }
 
 /** Screen-space placement keeps a small parcel's button from intercepting its neighbour. */

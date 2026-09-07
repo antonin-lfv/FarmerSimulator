@@ -16,6 +16,7 @@ class PossibleActionResponse(BaseModel):
     action_id: int
     action_type: str
     action_time_minutes: float
+    fixed_duration_seconds: float | None = None
     next_action: str | None
     requirements: list[ActionRequirementResponse]
 

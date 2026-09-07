@@ -2,7 +2,7 @@ import json
 import random
 import time
 
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -363,6 +363,21 @@ def list_action_history(db: Session, limit: int = 100) -> list[dict]:
 
 def complete_finished_actions(db: Session) -> None:
     current_time = time.time()
+    if settings.debug_action_seconds is not None:
+        # Enabling the fast test clock should also affect work launched before
+        # the backend restart; otherwise an old real-time job can remain stuck
+        # at several minutes while every new action lasts only a few seconds.
+        db.execute(
+            update(OngoingAction)
+            .where(
+                OngoingAction.end_time
+                > OngoingAction.start_time + settings.debug_action_seconds
+            )
+            .values(
+                end_time=OngoingAction.start_time + settings.debug_action_seconds
+            )
+        )
+        db.flush()
     finished = db.execute(
         select(OngoingAction).where(OngoingAction.end_time <= current_time)
     ).scalars().all()

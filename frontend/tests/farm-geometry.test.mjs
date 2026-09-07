@@ -13,6 +13,7 @@ import {
 import {
   mapShapes,
   containsPoint,
+  farmVisualStage,
   fieldColor,
   placeMarker,
   seededRandom,
@@ -114,6 +115,59 @@ test("crop appearance distinguishes tilled soil, growth and ripe harvests", () =
   );
   assert.notEqual(soil, growing);
   assert.notEqual(growing, ripe);
+});
+
+test("every farming step maps to a distinct 3D stage", () => {
+  const field = {
+    type_surface: "champ",
+    parcel_next_action: "labourer",
+    planted_seed_name: null,
+    growth_progress_percent: null,
+    fertilized: false,
+  };
+  assert.equal(farmVisualStage(field), "field-fallow");
+  assert.equal(
+    farmVisualStage({ ...field, parcel_next_action: "semer" }),
+    "field-tilled",
+  );
+  assert.equal(
+    farmVisualStage({
+      ...field,
+      planted_seed_name: "Blé",
+      growth_progress_percent: 35,
+    }),
+    "field-growing",
+  );
+  assert.equal(
+    farmVisualStage({
+      ...field,
+      planted_seed_name: "Blé",
+      growth_progress_percent: 35,
+      fertilized: true,
+    }),
+    "field-fertilized",
+  );
+  assert.equal(
+    farmVisualStage({
+      ...field,
+      planted_seed_name: "Blé",
+      growth_progress_percent: 100,
+      fertilized: true,
+    }),
+    "field-ripe",
+  );
+  assert.equal(
+    farmVisualStage({ ...field, type_surface: "forêt" }),
+    "forest-cleared",
+  );
+  assert.equal(
+    farmVisualStage({ ...field, type_surface: "vigne" }),
+    "vineyard-bare",
+  );
+  assert.equal(
+    farmVisualStage({ ...field, type_surface: "entrepôt" }),
+    "warehouse",
+  );
 });
 
 test("rebuilding the same parcel preserves its procedural layout", () => {

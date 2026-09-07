@@ -6,6 +6,7 @@ import type { OngoingAction, Parcel, Weather } from "@/lib/types";
 import { isParcelAtRisk } from "@/lib/utils";
 import {
   containsPoint,
+  farmVisualStage,
   fieldColor,
   mapShapes,
   placeMarker,
@@ -118,6 +119,10 @@ export function createFarmScene(
   const wallMat = material("#eee2c6"),
     roofMat = material("#9c6048"),
     darkMat = material("#566568");
+  const tractorMat = material("#d69338"),
+    harvesterMat = material("#c7a543"),
+    forestryMat = material("#b85f3b"),
+    wheelMat = material("#303936");
   function block(
     parent: THREE.Object3D,
     geo: THREE.BufferGeometry,
@@ -250,7 +255,41 @@ export function createFarmScene(
     });
   }
 
-  function decorate(plot: Plot, parcel: Parcel) {
+  function addWorkingMachine(
+    plot: Plot,
+    bounds: THREE.Box2,
+    ongoing: OngoingAction | undefined,
+  ) {
+    if (!ongoing) return;
+    const progress = ongoing.progress_percent / 100;
+    const machine = new THREE.Group();
+    const travel = Math.min(4, (bounds.max.x - bounds.min.x) * 0.22);
+    machine.position.set(
+      plot.center.x - travel + travel * 2 * progress,
+      0.75,
+      plot.center.z,
+    );
+    machine.rotation.y = progress > 0.5 ? Math.PI : 0;
+    const bodyMaterial = ongoing.action_type.includes("récolter")
+      ? harvesterMat
+      : ongoing.action_type.includes("bois")
+        ? forestryMat
+        : tractorMat;
+    block(machine, box, bodyMaterial, 0, 0.45, 0, 1.25, 0.65, 0.75);
+    block(machine, box, darkMat, -0.25, 0.95, 0, 0.55, 0.55, 0.62);
+    for (const x of [-0.45, 0.45])
+      for (const z of [-0.43, 0.43]) {
+        const wheel = block(machine, cylinder, wheelMat, x, 0.15, z, 0.25, 0.18, 0.25);
+        wheel.rotation.x = Math.PI / 2;
+      }
+    plot.decor.add(machine);
+  }
+
+  function decorate(
+    plot: Plot,
+    parcel: Parcel,
+    ongoing: OngoingAction | undefined,
+  ) {
     // Shared geometry/materials are disposed once with the scene; only instances change here.
     for (const child of [...plot.decor.children]) {
       if (child instanceof THREE.InstancedMesh) child.dispose();
@@ -258,6 +297,7 @@ export function createFarmScene(
     }
     const bounds = new THREE.Box2().setFromPoints(plot.points);
     const rand = seededRandom(plot.id * 311);
+    const stage = farmVisualStage(parcel);
     if (parcel.type_surface === "entrepôt") {
       const width = Math.min(5, (bounds.max.x - bounds.min.x) * 0.5);
       const depth = Math.min(7, (bounds.max.y - bounds.min.y) * 0.5);
@@ -336,55 +376,106 @@ export function createFarmScene(
           positions.push({ x: px, z: -py, scale: 0.75 + rand() * 0.6 });
       }
     }
-    if (!positions.length) return;
-    const foliage = new THREE.InstancedMesh(
-      forest ? cone : box,
-      forest ? leafMat : cropMat,
-      positions.length,
-    );
-    const trunks = forest
-      ? new THREE.InstancedMesh(cylinder, trunkMat, positions.length)
-      : null;
+    if (!positions.length) {
+      addWorkingMachine(plot, bounds, ongoing);
+      return;
+    }
     const dummy = new THREE.Object3D();
-    const growth = parcel.planted_seed_name
-      ? 0.25 + ((parcel.growth_progress_percent ?? 0) / 100) * 0.7
-      : 0.22;
-    positions.forEach((pos, i) => {
-      const height = forest ? 3.8 * pos.scale : vineyard ? 0.95 : growth;
-      dummy.position.set(pos.x, 0.55 + height / 2 + (forest ? 0.7 : 0), pos.z);
-      dummy.scale.set(
-        forest ? 1.35 * pos.scale : vineyard ? 0.5 : 0.2,
-        height,
-        forest ? 1.35 * pos.scale : 0.9,
-      );
-      dummy.rotation.y = forest ? rand() * Math.PI : 0;
-      dummy.updateMatrix();
-      foliage.setMatrixAt(i, dummy.matrix);
-      foliage.setColorAt(
-        i,
-        new THREE.Color(
-          forest
-            ? ["#315d43", "#4c774b", "#62854e"][i % 3]
-            : vineyard
-              ? "#627941"
-              : parcel.planted_seed_name
-                ? (parcel.growth_progress_percent ?? 0) > 75
-                  ? "#e1bf62"
-                  : "#7e9b43"
-                : "#a6ad6c",
-        ),
-      );
-      if (trunks) {
-        dummy.position.y = 1;
-        dummy.scale.set(0.15, 1.3, 0.15);
+    const progress = Math.max(0.08, (parcel.growth_progress_percent ?? 0) / 100);
+
+    if (stage === "field-tilled") {
+      const furrows = new THREE.InstancedMesh(box, trunkMat, positions.length);
+      positions.forEach((pos, i) => {
+        dummy.position.set(pos.x, 0.48, pos.z);
+        dummy.scale.set(0.13, 0.08, 0.8);
         dummy.updateMatrix();
-        trunks.setMatrixAt(i, dummy.matrix);
-      }
-    });
-    foliage.castShadow = forest || vineyard;
-    foliage.receiveShadow = true;
-    plot.decor.add(foliage);
-    if (trunks) plot.decor.add(trunks);
+        furrows.setMatrixAt(i, dummy.matrix);
+      });
+      furrows.receiveShadow = true;
+      plot.decor.add(furrows);
+    } else if (stage === "field-fallow") {
+      const sparse = positions.filter((_, i) => i % 4 === 0);
+      const stubble = new THREE.InstancedMesh(box, cropMat, sparse.length);
+      sparse.forEach((pos, i) => {
+        dummy.position.set(pos.x, 0.55, pos.z);
+        dummy.scale.set(0.12, 0.18 + (i % 3) * 0.04, 0.12);
+        dummy.updateMatrix();
+        stubble.setMatrixAt(i, dummy.matrix);
+        stubble.setColorAt(i, new THREE.Color(i % 2 ? "#a9ad68" : "#8e995c"));
+      });
+      plot.decor.add(stubble);
+    } else if (forest && stage === "forest-cleared") {
+      const cleared = positions.filter((_, i) => i % 3 === 0);
+      const stumps = new THREE.InstancedMesh(cylinder, trunkMat, cleared.length);
+      cleared.forEach((pos, i) => {
+        dummy.position.set(pos.x, 0.58, pos.z);
+        dummy.scale.set(0.28 + (i % 2) * 0.08, 0.3, 0.28 + (i % 2) * 0.08);
+        dummy.updateMatrix();
+        stumps.setMatrixAt(i, dummy.matrix);
+      });
+      plot.decor.add(stumps);
+    } else if (vineyard && stage === "vineyard-bare") {
+      const posts = new THREE.InstancedMesh(cylinder, trunkMat, positions.length);
+      positions.forEach((pos, i) => {
+        dummy.position.set(pos.x, 0.9, pos.z);
+        dummy.scale.set(0.07, 1.15, 0.07);
+        dummy.updateMatrix();
+        posts.setMatrixAt(i, dummy.matrix);
+      });
+      plot.decor.add(posts);
+    } else {
+      const foliage = new THREE.InstancedMesh(
+        forest ? cone : box,
+        forest ? leafMat : cropMat,
+        positions.length,
+      );
+      const trunks = forest
+        ? new THREE.InstancedMesh(cylinder, trunkMat, positions.length)
+        : null;
+      positions.forEach((pos, i) => {
+        const height = forest
+          ? (0.8 + progress * 3) * pos.scale
+          : vineyard
+            ? 0.3 + progress * 0.75
+            : 0.2 + progress * 0.85;
+        dummy.position.set(pos.x, 0.55 + height / 2 + (forest ? 0.45 : 0), pos.z);
+        dummy.scale.set(
+          forest ? (0.45 + progress) * pos.scale : vineyard ? 0.25 + progress * 0.3 : 0.2,
+          height,
+          forest ? (0.45 + progress) * pos.scale : 0.9,
+        );
+        dummy.rotation.y = forest ? rand() * Math.PI : 0;
+        dummy.updateMatrix();
+        foliage.setMatrixAt(i, dummy.matrix);
+        foliage.setColorAt(
+          i,
+          new THREE.Color(
+            forest
+              ? ["#315d43", "#4c774b", "#62854e"][i % 3]
+              : vineyard
+                ? stage === "vineyard-mature"
+                  ? i % 4 === 0 ? "#6f456a" : "#607b40"
+                  : "#789557"
+                : stage === "field-ripe"
+                  ? i % 3 === 0 ? "#edcf70" : "#d7b650"
+                  : stage === "field-fertilized"
+                    ? i % 3 === 0 ? "#a9c867" : "#6f963d"
+                    : "#7e9b43",
+          ),
+        );
+        if (trunks) {
+          dummy.position.y = 0.45 + height * 0.25;
+          dummy.scale.set(0.12, 0.8 + progress, 0.12);
+          dummy.updateMatrix();
+          trunks.setMatrixAt(i, dummy.matrix);
+        }
+      });
+      foliage.castShadow = forest || vineyard;
+      foliage.receiveShadow = true;
+      plot.decor.add(foliage);
+      if (trunks) plot.decor.add(trunks);
+    }
+    addWorkingMachine(plot, bounds, ongoing);
   }
 
   let state: SceneState = {
@@ -451,9 +542,12 @@ export function createFarmScene(
         parcel.planted_seed_name,
         Math.floor((parcel.growth_progress_percent ?? 0) / 10),
         parcel.parcel_next_action,
+        parcel.fertilized,
+        actions.get(plot.id)?.action_type,
+        Math.floor((actions.get(plot.id)?.progress_percent ?? 0) / 10),
       ].join("|");
       if (plot.signature !== signature) {
-        decorate(plot, parcel);
+        decorate(plot, parcel, actions.get(plot.id));
         plot.signature = signature;
       }
     }

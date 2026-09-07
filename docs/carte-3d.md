@@ -13,7 +13,9 @@ Le tableau de bord `/dashboard` est un espace de gestion centré sur un paysage 
 
 Cliquer sur le sol, un numéro, ou choisir un terrain dans « Accès rapide à une parcelle » ouvre le panneau de gestion : achat, équipements, travail agricole, protection et stockage. En vue agrandie, sélectionner une parcelle ramène au panneau de gestion. Sur mobile, la page rejoint ce panneau après son chargement.
 
-Les filtres mettent en évidence les terres possédées, à vendre ou en activité. Les badges indiquent propriété, sélection, activité et risque météo. Les numéros trop rapprochés sont espacés ou masqués ; zoomer ou utiliser l'accès rapide permet de rejoindre tous les terrains.
+Les filtres mettent en évidence les terres possédées, à vendre ou en activité. Les badges indiquent propriété, sélection, activité et risque météo. Les numéros trop rapprochés sont espacés ou masqués ; zoomer permet de rejoindre tous les terrains.
+
+Chaque étape agricole transforme réellement le terrain. Les champs passent de la jachère aux sillons labourés, puis aux jeunes pousses, à la culture fertilisée et enfin aux rangées dorées prêtes à récolter. Les forêts montrent d'abord les souches, puis des arbres qui grandissent ; les vignes passent des piquets nus aux rangs feuillus et aux grappes mûres. Pendant une action, une petite machine traverse progressivement la parcelle en suivant l'avancement réel du travail.
 
 La carte est exclusivement en 3D. Si l'accélération graphique n'est pas disponible, l'interface affiche une explication et permet de relancer la scène. La page d'accueil contient elle aussi une preview Three.js manipulable : glisser pour tourner, utiliser la molette ou le pincement pour zoomer, puis cliquer sur une parcelle pour entrer dans l'exploitation.
 
