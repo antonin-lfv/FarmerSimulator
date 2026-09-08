@@ -6,6 +6,9 @@
 
 <h4 align="center">Simulateur de gestion agricole : parcelles, actions temporisées, boutique, inventaire et marché dynamique, avec une carte 3D interactive.</h4>
 
+<p align="center">
+  <img src="assets/gif/demo.gif" alt="Démo de Verdance" width="720">
+</p>
 
 [Découvrir la carte 3D et ses commandes](docs/carte-3d.md)
 
