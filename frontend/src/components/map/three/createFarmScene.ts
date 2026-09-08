@@ -45,12 +45,12 @@ interface Plot {
 const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
   2: [-36, 0],
   5: [36, 0],
-  45: [-72, 12],
 };
 
-// Plot 47 needs to sit toward plot 46. Keeping this adjustment in world space
-// makes the marker rotate with the farm instead of sliding across it on screen.
+// Edge markers use fixed points in the farm so they rotate with the terrain
+// instead of sliding across it as screen-space offsets would.
 const LABEL_WORLD_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
+  45: [-10.55, 14.25],
   47: [3, 5.5],
 };
 
