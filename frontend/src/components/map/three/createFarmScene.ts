@@ -33,6 +33,7 @@ interface Plot {
   signature: string;
   points: THREE.Vector2[];
   center: THREE.Vector3;
+  labelAnchor: THREE.Vector3;
   label: HTMLButtonElement;
   weatherDecor: THREE.Group;
   weatherSignature: string;
@@ -45,7 +46,12 @@ const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> =
   2: [-36, 0],
   5: [36, 0],
   45: [-72, 12],
-  47: [72, 60],
+};
+
+// Plot 47 needs to sit toward plot 46. Keeping this adjustment in world space
+// makes the marker rotate with the farm instead of sliding across it on screen.
+const LABEL_WORLD_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
+  47: [3, -1.5],
 };
 
 const LABELS_WITHOUT_LEADER = new Set([45, 47]);
@@ -295,6 +301,10 @@ export function createFarmScene(
       middle = candidates[0] ?? middle;
     }
     const center = new THREE.Vector3(middle.x, heightAt(middle.x, -middle.y) + 2.8, -middle.y);
+    const [labelWorldX, labelWorldZ] = LABEL_WORLD_OFFSETS[parcelId] ?? [0, 0];
+    const labelX = center.x + labelWorldX;
+    const labelZ = center.z + labelWorldZ;
+    const labelAnchor = new THREE.Vector3(labelX, heightAt(labelX, labelZ) + 2.8, labelZ);
     const decor = new THREE.Group();
     scene.add(decor);
     const weatherDecor = new THREE.Group();
@@ -319,6 +329,7 @@ export function createFarmScene(
       signature: "",
       points,
       center,
+      labelAnchor,
       label,
       weatherDecor,
       weatherSignature: "",
@@ -952,7 +963,7 @@ export function createFarmScene(
         a.id - b.id,
     );
     for (const plot of labelOrder) {
-      projected.copy(plot.center).project(camera);
+      projected.copy(plot.labelAnchor).project(camera);
       const shown =
         (state.labels || state.selectedId === plot.id) &&
         plot.label.dataset.matches === "true" &&
