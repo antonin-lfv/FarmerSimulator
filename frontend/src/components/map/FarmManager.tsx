@@ -304,7 +304,7 @@ export function FarmManager({
                   disabled={!owned.length}
                   onClick={() => loadParcel(owned[0].parcel_id)}
                 >
-                  Gérer ma première parcelle <ArrowUpRight size={17} />
+                  {owned.length === 1 ? "Gérer ma parcelle" : "Gérer mes parcelles"} <ArrowUpRight size={17} />
                 </button>
               </div>
               <div className="inspector-section">
