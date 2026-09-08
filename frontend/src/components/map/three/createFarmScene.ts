@@ -50,7 +50,7 @@ const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> =
 // Edge markers use fixed points in the farm so they rotate with the terrain
 // instead of sliding across it as screen-space offsets would.
 const LABEL_WORLD_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
-  45: [-10.55, 14.25],
+  45: [-1.91, 4.15],
   47: [3, 5.5],
 };
 
