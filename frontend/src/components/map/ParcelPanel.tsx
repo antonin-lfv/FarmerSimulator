@@ -15,7 +15,7 @@ import {
   cn,
   currentCycleIndex,
   decodeResourceValue,
-  equipmentDurationMultiplier,
+  estimateActionCost,
   formatDuration,
   formatUsd,
   getCropCycle,
@@ -401,29 +401,13 @@ function ActionForm({
   const [error, setError] = useState<string | null>(null);
   const push = useToast();
 
-  // Mirrors backend action_service.start_action: a better tractor/accessoire
-  // shortens the job itself, so the previewed time and cost must reflect
-  // whichever equipment is currently picked, not a static per-ha rate.
-  const equipmentMultiplier = action.requirements.reduce((mult, req) => {
-    const decoded = decodeResourceValue(selections[req.subcategory]);
-    if (!decoded) return mult;
-    const item = catalog.find((i) => i.item_id === decoded.itemId);
-    if (!item) return mult;
-    return mult * equipmentDurationMultiplier(catalog, item.category, item.subcategory, item.price);
-  }, 1);
-  const totalMinutes = action.action_time_minutes * superficie * equipmentMultiplier;
+  const costEstimate = estimateActionCost(action, [superficie], selections, catalog);
+  const equipmentMultiplier = costEstimate.equipmentMultiplier;
+  const totalMinutes = costEstimate.totalMinutes;
   const displayedDuration = formatDuration(
     action.fixed_duration_seconds ?? totalMinutes * 60,
   );
-  const laborCost = LABOR_RATE_USD * totalMinutes;
-
-  const rentalCost = action.requirements.reduce((sum, req) => {
-    const decoded = decodeResourceValue(selections[req.subcategory]);
-    if (decoded?.mode !== "rent") return sum;
-    const item = catalog.find((i) => i.item_id === decoded.itemId);
-    return sum + (item?.rental_price ?? 0);
-  }, 0);
-  const totalCost = laborCost + rentalCost;
+  const totalCost = costEstimate.totalCost;
 
   async function handleStart() {
     const resources = action.requirements.map((req) => {

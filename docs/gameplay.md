@@ -132,8 +132,10 @@ action une par une n'est plus praticable :
 - **Action groupée par étape** — la page `/parcels` regroupe les parcelles possédées sans action en
   cours par leur `parcel_next_action` (ex. « Semer céréales — 12 parcelles »). Choisir « Lancer sur
   toutes » ouvre une modale où l'on sélectionne une seule fois le matériel/graines (achat ou
-  location) pour tout le groupe, puis `POST /api/parcels/bulk/actions` démarre l'action sur chaque
-  parcelle éligible.
+  location) pour tout le groupe. La modale additionne la main d'œuvre de chaque superficie et les
+  locations par parcelle, affiche le coût total, le solde et l'éventuel montant manquant. Le
+  lancement reste désactivé si le solde ne couvre pas tout le lot ; sinon
+  `POST /api/parcels/bulk/actions` démarre l'action sur chaque parcelle éligible.
 - **Pas de limite artificielle** : aucune notion de main d'œuvre limitée (voir plus haut, tarif
   fixe) — une action groupée démarre sur toutes les parcelles éligibles d'un coup. Seul le matériel
   réellement disponible (véhicules/accessoires non déjà occupés) peut faire échouer certaines

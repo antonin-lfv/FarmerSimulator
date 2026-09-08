@@ -21,6 +21,7 @@ import {
 import { PARCEL_PATHS } from "../src/data/parcelPaths.ts";
 import { WATER_REGIONS } from "../src/data/mapDecor.ts";
 import { createTerrain, drapeGeometry, terrainNormal, vehicleLane } from "../src/components/map/three/terrain.ts";
+import { estimateActionCost } from "../src/lib/utils.ts";
 
 globalThis.DOMParser = DOMParser;
 
@@ -239,4 +240,32 @@ test("crowded parcel markers never cover a neighbouring click target", () => {
     }
   }
   assert.equal(placeMarker(-100, -100, 390, 540, []), null);
+});
+
+test("batch cost includes every parcel's labor and each equipment rental", () => {
+  const action = {
+    action_time_minutes: 2,
+    requirements: [
+      { subcategory: "tracteur", amount: 1 },
+      { subcategory: "accessoire", amount: 1 },
+    ],
+  };
+  const catalog = [
+    { item_id: 1, category: "vehicules", subcategory: "tracteur", price: 100, rental_price: 10 },
+    { item_id: 2, category: "vehicules", subcategory: "tracteur", price: 200, rental_price: 20 },
+    { item_id: 3, category: "accessoires", subcategory: "accessoire", price: 1_000, rental_price: 100 },
+  ];
+
+  const estimate = estimateActionCost(
+    action,
+    [10, 20],
+    { tracteur: "2", accessoire: "rent:3" },
+    catalog,
+  );
+
+  assert.equal(estimate.equipmentMultiplier, 0.8);
+  assert.equal(estimate.totalMinutes, 48);
+  assert.equal(estimate.laborCost, 2_400);
+  assert.equal(estimate.rentalCost, 200);
+  assert.equal(estimate.totalCost, 2_600);
 });

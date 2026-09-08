@@ -1,6 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { Tractor, Sprout, Wheat, TreePine, Grape, type LucideIcon } from "lucide-react";
-import type { ResourceMode, CatalogItem, OngoingAction, Parcel, SurfaceType, Weather } from "./types";
+import type { ResourceMode, CatalogItem, OngoingAction, Parcel, PossibleAction, SurfaceType, Weather } from "./types";
 
 export function cn(...inputs: ClassValue[]) {
   return clsx(inputs);
@@ -246,6 +246,38 @@ export function decodeResourceValue(value: string | undefined): { itemId: number
   if (!value) return null;
   if (value.startsWith("rent:")) return { itemId: Number(value.slice(5)), mode: "rent" };
   return { itemId: Number(value), mode: "own" };
+}
+
+export function estimateActionCost(
+  action: Pick<PossibleAction, "action_time_minutes" | "requirements">,
+  superficies: number[],
+  selections: Record<string, string>,
+  catalog: CatalogItem[],
+) {
+  const equipmentMultiplier = action.requirements.reduce((multiplier, requirement) => {
+    const selected = decodeResourceValue(selections[requirement.subcategory]);
+    const item = selected ? catalog.find((candidate) => candidate.item_id === selected.itemId) : undefined;
+    if (!item) return multiplier;
+    return multiplier * equipmentDurationMultiplier(catalog, item.category, item.subcategory, item.price);
+  }, 1);
+  const totalHectares = superficies.reduce((sum, superficie) => sum + superficie, 0);
+  const totalMinutes = action.action_time_minutes * totalHectares * equipmentMultiplier;
+  const laborCost = LABOR_RATE_USD * totalMinutes;
+  const rentalCostPerParcel = action.requirements.reduce((sum, requirement) => {
+    const selected = decodeResourceValue(selections[requirement.subcategory]);
+    if (selected?.mode !== "rent") return sum;
+    const item = catalog.find((candidate) => candidate.item_id === selected.itemId);
+    return sum + (item?.rental_price ?? 0);
+  }, 0);
+  const rentalCost = rentalCostPerParcel * superficies.length;
+
+  return {
+    equipmentMultiplier,
+    totalMinutes,
+    laborCost,
+    rentalCost,
+    totalCost: laborCost + rentalCost,
+  };
 }
 
 export function iconForAction(actionType: string): LucideIcon {
