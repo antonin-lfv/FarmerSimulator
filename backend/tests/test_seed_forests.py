@@ -11,6 +11,7 @@ from app.seed import (
     STARTING_FOREST_SEED_ITEM_ID,
     seed_if_empty,
 )
+from app.services import parcel_service
 
 
 class MatureForestSeedTests(unittest.TestCase):
@@ -70,6 +71,28 @@ class MatureForestSeedTests(unittest.TestCase):
         self.assertEqual(forest.parcel_next_action, "planter des arbres")
         self.assertIsNone(forest.planted_seed_item_id)
         self.assertEqual(forest.growth_progress, 0.0)
+
+    def test_owned_warehouse_exposes_the_next_upgrade_cost(self) -> None:
+        seed_if_empty(self.db)
+        warehouse_id = (
+            self.db.query(TypeSurface)
+            .filter(TypeSurface.type_surface == "entrepôt")
+            .one()
+            .type_surface_id
+        )
+        warehouse = (
+            self.db.query(Parcel)
+            .filter(Parcel.type_surface_id == warehouse_id)
+            .first()
+        )
+        assert warehouse is not None
+        warehouse.is_purchased = True
+        warehouse.storage_level = 3
+        self.db.commit()
+
+        response = parcel_service._parcel_dict(self.db, warehouse)
+
+        self.assertEqual(response["storage_upgrade_cost"], 12_000.0)
 
 
 if __name__ == "__main__":

@@ -45,8 +45,10 @@ const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> =
   2: [-36, 0],
   5: [36, 0],
   45: [-72, 12],
-  47: [36, 88],
+  47: [72, 60],
 };
+
+const LABELS_WITHOUT_LEADER = new Set([45, 47]);
 
 export function createFarmScene(
   host: HTMLDivElement,
@@ -977,7 +979,7 @@ export function createFarmScene(
           const anchorX = ((projected.x + 1) / 2) * host.clientWidth;
           const anchorY = ((-projected.y + 1) / 2) * host.clientHeight;
           const dx = position.x - anchorX, dy = position.y - anchorY;
-          if (Math.hypot(dx, dy) > 18) {
+          if (Math.hypot(dx, dy) > 18 && !LABELS_WITHOUT_LEADER.has(plot.id)) {
             plot.leader.hidden = false;
             plot.leader.style.width = `${Math.hypot(dx, dy)}px`;
             plot.leader.style.transform = `translate(${anchorX}px, ${anchorY}px) rotate(${Math.atan2(dy, dx)}rad)`;

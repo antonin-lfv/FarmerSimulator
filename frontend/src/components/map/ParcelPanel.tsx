@@ -368,9 +368,15 @@ function StorageUpgradePanel({
         <p className="mt-1 text-xs text-foreground-muted">
           Chaque niveau augmente la capacité de stockage globale de votre exploitation.
         </p>
+        <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-sm">
+          <span className="text-foreground-muted">Prochaine amélioration</span>
+          <span className="font-semibold text-foreground">
+            {formatUsd(parcel.storage_upgrade_cost ?? 0)}
+          </span>
+        </div>
       </div>
       <Button size="sm" onClick={handleUpgrade} disabled={busy}>
-        Améliorer au niveau {parcel.storage_level + 1}
+        Améliorer au niveau {parcel.storage_level + 1} · {formatUsd(parcel.storage_upgrade_cost ?? 0)}
       </Button>
       {error && <p className="text-xs text-red-600">{error}</p>}
     </div>

@@ -24,8 +24,8 @@ La carte est exclusivement en 3D. Si l'accélération graphique n'est pas dispon
 Les collines suivent une hauteur commune à toute la scène. Les surfaces sont
 subdivisées avant déformation ; les cultures, contours et points d'ancrage des
 numéros suivent cette même hauteur. Les berges restent au niveau de l'eau.
-Les numéros 2, 5, 45 et 47 ont un décalage manuel ; un trait relie une étiquette
-éloignée à son point d'ancrage pour garder l'association lisible en rotation.
+Les numéros 2, 5, 45 et 47 ont un décalage manuel. Les repères 45 et 47 restent
+sans trait de liaison afin de préserver la lisibilité du bord de carte.
 
 Les machines effectuent un aller-retour sur un passage continu calculé à
 l'intérieur du polygone, avec une marge pour leur encombrement. Elles suivent

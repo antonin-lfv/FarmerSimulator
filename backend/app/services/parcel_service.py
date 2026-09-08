@@ -90,10 +90,11 @@ def _parcel_dict(db: Session, parcel: Parcel, ctx: dict | None = None) -> dict:
         and planted_seed is not None
         and parcel.yield_health < 100
     )
+    type_surface = ctx["type_surfaces"].get(parcel.type_surface_id, "")
     return {
         "parcel_id": parcel.parcel_id,
         "superficie": parcel.superficie,
-        "type_surface": ctx["type_surfaces"].get(parcel.type_surface_id, ""),
+        "type_surface": type_surface,
         "prix": parcel.prix,
         "is_purchased": parcel.is_purchased,
         "parcel_next_action": parcel.parcel_next_action,
@@ -101,6 +102,11 @@ def _parcel_dict(db: Session, parcel: Parcel, ctx: dict | None = None) -> dict:
         "yield_health": parcel.yield_health,
         "fertilized": parcel.fertilized,
         "storage_level": parcel.storage_level,
+        "storage_upgrade_cost": (
+            settings.storage_upgrade_base_cost * parcel.storage_level
+            if type_surface == "entrepôt" and parcel.is_purchased
+            else None
+        ),
         "protected_today": parcel.protected_until_day == ctx["today"],
         "active_fire": fire_damage_today and parcel.protected_until_day != ctx["today"],
         "fire_damage_today": fire_damage_today,

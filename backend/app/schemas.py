@@ -34,6 +34,7 @@ class ParcelResponse(BaseModel):
     yield_health: float
     fertilized: bool
     storage_level: int
+    storage_upgrade_cost: float | None
     protected_today: bool
     active_fire: bool = False
     fire_damage_today: bool = False

@@ -16,6 +16,7 @@ export interface Parcel {
   yield_health: number;
   fertilized: boolean;
   storage_level: number;
+  storage_upgrade_cost: number | null;
   protected_today: boolean;
   active_fire?: boolean;
   fire_damage_today?: boolean;

@@ -40,6 +40,7 @@ const DEMO_PARCELS: Parcel[] = Array.from({ length: 54 }, (_, index) => {
     yield_health: 100,
     fertilized: false,
     storage_level: typeSurface === "entrepôt" && OWNED.has(parcelId) ? 1 : 0,
+    storage_upgrade_cost: typeSurface === "entrepôt" && OWNED.has(parcelId) ? 4_000 : null,
     protected_today: false,
     planted_seed_name: growing
       ? typeSurface === "forêt"
