@@ -20,7 +20,13 @@ import {
 } from "../src/components/map/three/geometry.ts";
 import { PARCEL_PATHS } from "../src/data/parcelPaths.ts";
 import { WATER_REGIONS } from "../src/data/mapDecor.ts";
-import { createTerrain, drapeGeometry, terrainNormal, vehicleLane } from "../src/components/map/three/terrain.ts";
+import {
+  createTerrain,
+  drapeGeometry,
+  terrainNormal,
+  vehicleLane,
+  vehicleLaneMotion,
+} from "../src/components/map/three/terrain.ts";
 import { estimateActionCost } from "../src/lib/utils.ts";
 import { buildQueryString } from "../src/lib/query.ts";
 
@@ -71,6 +77,18 @@ test("all vehicle lanes keep wheels inside parcels and on raycastable relief", (
     }
     source.dispose(); geometry.dispose(); material.dispose();
   }
+});
+
+test("working vehicles repeat their lane at a steady speed for long jobs", () => {
+  const laneLength = 10;
+  const speed = 2;
+
+  assert.deepEqual(vehicleLaneMotion(0, laneLength, speed), { t: 0, direction: 1 });
+  assert.deepEqual(vehicleLaneMotion(2.5, laneLength, speed), { t: 0.5, direction: 1 });
+  assert.deepEqual(vehicleLaneMotion(5, laneLength, speed), { t: 1, direction: -1 });
+  assert.deepEqual(vehicleLaneMotion(7.5, laneLength, speed), { t: 0.5, direction: -1 });
+  assert.deepEqual(vehicleLaneMotion(10, laneLength, speed), { t: 0, direction: 1 });
+  assert.deepEqual(vehicleLaneMotion(1_810, laneLength, speed), { t: 0, direction: 1 });
 });
 
 test("the 54 original parcels remain unique, finite and triangulatable in world space", () => {

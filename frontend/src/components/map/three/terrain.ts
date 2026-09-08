@@ -96,3 +96,29 @@ export function vehicleLane(points: THREE.Vector2[]) {
   }
   return best;
 }
+
+export interface VehicleLaneMotion {
+  t: number;
+  direction: 1 | -1;
+}
+
+/** Continuous back-and-forth movement at a readable speed, independent of job duration. */
+export function vehicleLaneMotion(
+  elapsedSeconds: number,
+  laneLength: number,
+  speed = 1.4,
+): VehicleLaneMotion {
+  if (!Number.isFinite(elapsedSeconds) || !Number.isFinite(laneLength) || laneLength <= 0 || speed <= 0) {
+    return { t: 0, direction: 1 };
+  }
+
+  const legProgress = Math.max(0, elapsedSeconds) * speed / laneLength;
+  const leg = Math.floor(legProgress);
+  const fraction = legProgress - leg;
+  const forward = leg % 2 === 0;
+
+  return {
+    t: forward ? fraction : 1 - fraction,
+    direction: forward ? 1 : -1,
+  };
+}

@@ -13,7 +13,13 @@ import {
   seededRandom,
 } from "./geometry";
 import { createWeatherEffects } from "./weatherEffects";
-import { createTerrain, drapeGeometry, terrainNormal, vehicleLane } from "./terrain";
+import {
+  createTerrain,
+  drapeGeometry,
+  terrainNormal,
+  vehicleLane,
+  vehicleLaneMotion,
+} from "./terrain";
 
 export type MapFilter = "all" | "owned" | "sale" | "active";
 export type MapCommand = "in" | "out" | "home" | "top" | "focus";
@@ -626,7 +632,6 @@ export function createFarmScene(
     labels: true,
   };
   let hovered: number | null = null;
-  let actionSnapshotAt = performance.now();
   let disposed = false;
   let destination: { camera: THREE.Vector3; target: THREE.Vector3 } | null =
     null;
@@ -927,15 +932,20 @@ export function createFarmScene(
     for (const plot of plots) {
       const action = state.ongoingActions.find((item) => item.parcel_id === plot.id);
       if (!action || !plot.machine || !plot.lane) continue;
-      const initial = action.progress_percent / 100;
-      const duration = action.remaining_minutes * 60 / Math.max(0.001, 1 - initial);
-      const progress = Math.min(1, initial + (reducedMotion ? 0 : (performance.now() - actionSnapshotAt) / 1000 / Math.max(1, duration)));
-      const phase = progress * 2;
-      const t = phase > 1 ? 2 - phase : phase;
       const [a, b] = plot.lane;
+      const laneLength = a.distanceTo(b);
+      const motion = reducedMotion
+        ? {
+            t: action.progress_percent <= 50
+              ? action.progress_percent / 50
+              : 2 - action.progress_percent / 50,
+            direction: (action.progress_percent <= 50 ? 1 : -1) as 1 | -1,
+          }
+        : vehicleLaneMotion(performance.now() / 1000 + action.ongoing_action_id * 1.7, laneLength);
+      const t = THREE.MathUtils.clamp(motion.t, 0, 1);
       const x = THREE.MathUtils.lerp(a.x, b.x, t), z = -THREE.MathUtils.lerp(a.y, b.y, t);
       const normal = terrainNormal(heightAt, x, z);
-      const forward = new THREE.Vector3(b.x - a.x, 0, a.y - b.y).multiplyScalar(phase > 1 ? -1 : 1);
+      const forward = new THREE.Vector3(b.x - a.x, 0, a.y - b.y).multiplyScalar(motion.direction);
       forward.addScaledVector(normal, -forward.dot(normal)).normalize();
       const side = new THREE.Vector3().crossVectors(forward, normal).normalize();
       plot.machine.quaternion.setFromRotationMatrix(new THREE.Matrix4().makeBasis(forward, normal, side));
@@ -1002,7 +1012,6 @@ export function createFarmScene(
   });
   return {
     update(next: SceneState) {
-      if (next.ongoingActions !== state.ongoingActions) actionSnapshotAt = performance.now();
       state = next;
       paint();
     },

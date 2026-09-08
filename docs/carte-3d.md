@@ -28,8 +28,9 @@ Les numéros 2, 5, 45 et 47 ont un décalage manuel. Les repères 45 et 47 utili
 des ancrages fixes dans la scène, ajustés à l'altitude du relief, afin de rester
 stables pendant la rotation. Ils restent sans trait de liaison.
 
-Les machines effectuent un aller-retour sur un passage continu calculé à
-l'intérieur du polygone, avec une marge pour leur encombrement. Elles suivent
+Les machines effectuent des allers-retours continus sur un passage calculé à
+l'intérieur du polygone, avec une marge pour leur encombrement. Leur vitesse
+visuelle reste lisible quelle que soit la durée réelle du travail. Elles suivent
 la hauteur et la normale de la pente. Les bâtiments ont une fondation horizontale.
 
 Les forêts d'une nouvelle partie sont déjà matures et récoltables. Cette mise à

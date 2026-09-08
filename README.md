@@ -49,7 +49,8 @@ docker compose up -d --build backend frontend caddy
 - Collines douces et berges basses : terrains, cultures, contours et numéros
   partagent la même altitude. Les entrepôts reposent sur des fondations planes.
 - Les machines suivent un passage intérieur à leur parcelle et s'inclinent avec
-  la pente. Leur avancement visuel suit la durée réelle de l'action.
+  la pente. Elles effectuent des allers-retours continus à vitesse lisible pendant
+  toute l'action, même lorsque le travail dure plusieurs dizaines de minutes.
 - Toutes les forêts sont initialement matures et prêtes à être coupées : elles
   donnent du relief dès le départ et permettent de récolter puis vendre du bois
   immédiatement après l'achat d'une parcelle forestière. Après la première
