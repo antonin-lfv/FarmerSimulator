@@ -148,6 +148,7 @@ export default function MarketPage() {
       </Card>
 
       <SellItemModal
+        key={sellTarget?.item_id ?? "no-sale"}
         item={sellTarget ? { name: sellTarget.name, img_path: sellTarget.img_path, price: marketPriceFor(sellTarget) } : null}
         ownedQuantity={sellTarget?.amount ?? 0}
         open={sellTarget != null}

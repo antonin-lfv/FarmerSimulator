@@ -23,6 +23,7 @@ import type {
   Wallet,
 } from "./types";
 import { emitMutation } from "./events";
+import { buildQueryString } from "./query";
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api";
 
@@ -86,7 +87,7 @@ export const api = {
     }),
 
   getCatalog: (params?: { category?: string; subcategory?: string }) => {
-    const qs = new URLSearchParams(params as Record<string, string>).toString();
+    const qs = buildQueryString(params);
     return request<CatalogItem[]>(`/catalog${qs ? `?${qs}` : ""}`);
   },
   getCatalogCategories: () => request<string[]>("/catalog/categories"),
@@ -127,9 +128,7 @@ export const api = {
     }),
 
   getTransactions: (params?: { limit?: number; category?: string }) => {
-    const qs = new URLSearchParams(
-      Object.fromEntries(Object.entries(params ?? {}).map(([k, v]) => [k, String(v)])),
-    ).toString();
+    const qs = buildQueryString(params);
     return request<Transaction[]>(`/transactions${qs ? `?${qs}` : ""}`);
   },
   getTransaction: (id: number) => request<Transaction>(`/transactions/${id}`),

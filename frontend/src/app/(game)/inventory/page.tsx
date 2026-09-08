@@ -76,6 +76,7 @@ export default function InventoryPage() {
       )}
 
       <SellItemModal
+        key={sellTarget?.item_id ?? "no-sale"}
         item={sellTarget}
         ownedQuantity={sellTarget?.amount ?? 0}
         open={sellTarget != null}

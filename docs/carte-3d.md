@@ -67,4 +67,4 @@ La scène Three.js est chargée à la demande côté navigateur. Les arbres et l
 
 Validation manuelle : rotation sans sélection accidentelle, sélection d'un champ et d'un entrepôt, centrage sur la sélection, filtres, carte agrandie, preview de la page d'accueil et affichage à 390 px.
 
-Le lint global signale encore des problèmes React préexistants dans `BulkActionModal`, `BuyItemModal`, `SellItemModal`, `AnimatedNumber`, `calendar-context` et `wallet-context`. Les fichiers de cette refonte sont vérifiés séparément.
+Le lint global signale encore des problèmes React préexistants dans `BuyItemModal`, `AnimatedNumber`, `calendar-context` et `wallet-context`. Les fichiers de cette refonte sont vérifiés séparément.

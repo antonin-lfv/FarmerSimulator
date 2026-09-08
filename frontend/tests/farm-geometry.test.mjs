@@ -22,8 +22,15 @@ import { PARCEL_PATHS } from "../src/data/parcelPaths.ts";
 import { WATER_REGIONS } from "../src/data/mapDecor.ts";
 import { createTerrain, drapeGeometry, terrainNormal, vehicleLane } from "../src/components/map/three/terrain.ts";
 import { estimateActionCost } from "../src/lib/utils.ts";
+import { buildQueryString } from "../src/lib/query.ts";
 
 globalThis.DOMParser = DOMParser;
+
+test("API query strings omit optional filters that have no value", () => {
+  assert.equal(buildQueryString({ limit: 200, category: undefined }), "limit=200");
+  assert.equal(buildQueryString({ category: "vente_recolte" }), "category=vente_recolte");
+  assert.equal(buildQueryString({ category: "" }), "");
+});
 
 const water = WATER_REGIONS.flatMap((region) => mapShapes(region.d).map((shape) => shape.getPoints()));
 const heightAt = createTerrain(water);

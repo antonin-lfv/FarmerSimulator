@@ -99,8 +99,9 @@ tout, disponible même si vous ne possédez rien.
 - **Fiches produit** (`/catalog/{id}`) : une par article du catalogue, description + specs dérivées
   des vraies mécaniques (pas de texte statique désynchronisable) + utilisation + meilleure période
   pour les graines.
-- **Achat/vente** : toujours via une modale de confirmation (image, prix, quantité, total) — jamais
-  d'action instantanée au clic. Le lancement d'une activité permet d'acheter directement le
+- **Achat/vente** : toujours via une modale de confirmation (image, prix, quantité, total). La
+  quantité vendue peut être saisie directement ou réglée à 25 %, 50 % ou 100 % du stock. Le
+  lancement d'une activité permet d'acheter directement le
   matériel manquant, y compris parcourir d'autres modèles/variétés non possédés via les flèches,
   sans quitter la page.
 - **Info-bulles** : un petit repère « ⓘ » (`InfoTip`, `title` natif) à côté des libellés non
