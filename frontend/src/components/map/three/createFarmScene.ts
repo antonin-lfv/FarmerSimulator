@@ -51,7 +51,7 @@ const LABEL_SCREEN_OFFSETS: Partial<Record<number, readonly [number, number]>> =
 // Plot 47 needs to sit toward plot 46. Keeping this adjustment in world space
 // makes the marker rotate with the farm instead of sliding across it on screen.
 const LABEL_WORLD_OFFSETS: Partial<Record<number, readonly [number, number]>> = {
-  47: [3, -1.5],
+  47: [3, 5.5],
 };
 
 const LABELS_WITHOUT_LEADER = new Set([45, 47]);
