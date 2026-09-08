@@ -1,7 +1,6 @@
 from sqlalchemy import update
 from sqlalchemy.orm import Session
 
-from app.config import settings
 from app.models import Wallet
 from app.services import transaction_service
 
@@ -88,7 +87,3 @@ def debit(
     )
     db.commit()
     return True
-
-
-def cheat(db: Session) -> float:
-    return credit(db, settings.cheat_amount_usd, "triche", "Injection de trésorerie (debug)")

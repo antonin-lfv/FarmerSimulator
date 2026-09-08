@@ -20,9 +20,6 @@ services:
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-verdance}:${POSTGRES_PASSWORD:-verdance}@db:5432/${POSTGRES_DB:-verdance}
       CORS_ORIGINS: http://localhost:3000,http://verdance.test
-      # Fast action clock for hands-on gameplay testing. Calendar pacing stays
-      # at its normal value so market and weather processing remain lightweight.
-      DEBUG_ACTION_SECONDS: 10
     ports:
       - "8000:8000"
     depends_on:

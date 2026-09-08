@@ -9,7 +9,8 @@ l'ancienne version Streamlit).
 Le temps du jeu est dérivé du temps réel écoulé depuis le lancement de la partie
 (`GameState.epoch_ts`), pas stocké tour par tour. Un an de jeu dure `month_duration_seconds × 12`
 secondes réelles (par défaut 1 mois = 1 semaine réelle ; `GAME_MONTH_SECONDS` en variable
-d'environnement pour accélérer en debug, 5 min par défaut en Docker Compose). L'année compte 366
+d'environnement peut l'accélérer lors d'un test isolé, mais Docker Compose ne l'active pas).
+L'année compte 366
 jours répartis sur des mois à longueur réelle (février = 29 jours) — le jeu affiche une vraie date
 ("23 mai") mais **aucune année** : le calendrier boucle indéfiniment, il n'y a pas de compteur
 d'année à afficher.
@@ -21,8 +22,7 @@ pas une estimation — voir/prévisions ("today" et `get_forecast` appellent la 
 états : ensoleillé, pluie, gel, canicule, avec des probabilités mensuelles calées sur un climat
 français (gel concentré en hiver, canicule en été).
 
-- **Pluie** : accélère la pousse des cultures (`rain_growth_multiplier`, ×1.1) et allonge/raccourcit
-  légèrement la durée des actions en cours.
+- **Pluie** : accélère la pousse des cultures (`rain_growth_multiplier`, ×1.1).
 - **Gel/canicule** : endommage `yield_health` chaque jour (15/10 points de base, réduit par la
   résistance de la variété plantée, annulé si la parcelle est protégée ce jour-là) et déclenche une
   notification. La canicule ralentit aussi la pousse (`heat_growth_multiplier`, ×0.85).
@@ -34,6 +34,12 @@ français (gel concentré en hiver, canicule en été).
 `labourer → semer → mettre engrais → récolter → labourer...` (vigne/forêt : `planter → récolter`).
 Chaque étape est une action manuelle avec un coût (main d'œuvre × durée × superficie, + location
 éventuelle) affiché avant de démarrer.
+
+En production, une minute d'action correspond à une minute réelle. Le matériel comparable module
+la durée : le modèle le moins performant applique jusqu'à ×1,15 et le meilleur jusqu'à ×0,80,
+avec interpolation selon son prix dans la gamme. Les multiplicateurs des différents équipements
+requis se combinent et modifient aussi le coût de main-d'œuvre. `DEBUG_ACTION_SECONDS` permet
+encore un test ponctuel du backend, mais n'est pas défini dans Docker Compose.
 
 **Pousse réaliste** : une fois semé, la récolte n'est pas immédiatement disponible même si
 l'engrais est déjà passé — une jauge de pousse (`growth_progress`, en jours de jeu accumulés,

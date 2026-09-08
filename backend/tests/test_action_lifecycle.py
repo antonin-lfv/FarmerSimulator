@@ -6,7 +6,7 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import Session
 
 from app.database import Base
-from app.models import Action, OngoingAction, Parcel, TypeSurface
+from app.models import Action, Catalog, OngoingAction, Parcel, TypeSurface
 from app.services import action_service
 
 
@@ -93,6 +93,43 @@ class ActionLifecycleTests(unittest.TestCase):
 
         ongoing = self.db.query(OngoingAction).one()
         self.assertEqual(ongoing.end_time, ongoing.start_time + 10)
+
+    def test_better_equipment_shortens_production_duration(self) -> None:
+        catalog_items = [
+            (1, "vehicules", "tracteur", "Petit", 28_000),
+            (2, "vehicules", "tracteur", "Moyen", 58_000),
+            (3, "vehicules", "tracteur", "Grand", 115_000),
+            (39, "accessoires", "labour", "Entrée", 4_200),
+            (15, "accessoires", "labour", "Premium", 6_000),
+        ]
+        self.db.add_all(
+            Catalog(
+                item_id=item_id,
+                category=category,
+                subcategory=subcategory,
+                name=name,
+                price=price,
+                promotion=0,
+                img_path="",
+            )
+            for item_id, category, subcategory, name, price in catalog_items
+        )
+        self.db.commit()
+
+        slow_tractor = action_service.equipment_duration_multiplier(
+            self.db, "vehicules", "tracteur", 28_000
+        )
+        fast_tractor = action_service.equipment_duration_multiplier(
+            self.db, "vehicules", "tracteur", 115_000
+        )
+        fast_tool = action_service.equipment_duration_multiplier(
+            self.db, "accessoires", "labour", 6_000
+        )
+
+        self.assertAlmostEqual(slow_tractor, 1.15)
+        self.assertAlmostEqual(fast_tractor, 0.80)
+        self.assertAlmostEqual(fast_tool, 0.80)
+        self.assertAlmostEqual(2 * 14 * fast_tractor * fast_tool, 17.92)
 
 
 if __name__ == "__main__":

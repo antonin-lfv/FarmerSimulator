@@ -58,7 +58,6 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 
 export const api = {
   getWallet: () => request<Wallet>("/wallet"),
-  cheatWallet: () => request<Wallet>("/wallet/cheat", { method: "POST" }),
 
   getParcels: () => request<Parcel[]>("/parcels"),
   getParcel: (id: number) => request<ParcelDetail>(`/parcels/${id}`),

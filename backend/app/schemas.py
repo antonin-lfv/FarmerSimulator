@@ -180,10 +180,6 @@ class SellHarvestRequest(BaseModel):
     quantity: int
 
 
-class CheatResponse(BaseModel):
-    balance_usd: float
-
-
 class StorageResponse(BaseModel):
     used: float
     capacity: float

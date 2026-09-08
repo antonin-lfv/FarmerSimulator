@@ -213,7 +213,7 @@ export const TRANSACTION_CATEGORY_LABELS: Record<string, string> = {
   protection: "Protection météo",
   pret_octroi: "Prêt accordé",
   pret_remboursement: "Remboursement de prêt",
-  triche: "Ajustement (debug)",
+  triche: "Ajustement historique",
   autre: "Autre",
 };
 

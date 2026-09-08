@@ -10,7 +10,6 @@ class Settings:
     cors_origins: list[str] = os.environ.get("CORS_ORIGINS", "http://localhost:3000").split(",")
 
     starting_balance_usd: float = 75_000.0
-    cheat_amount_usd: float = 10_000.0
 
     # Legacy `action_time` was misleadingly documented as "hours" but every call
     # site actually treated it as minutes (action_time * 60 == seconds). We keep

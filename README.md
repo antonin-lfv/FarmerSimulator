@@ -73,13 +73,23 @@ Le mode de réduction des animations coupe les éclairs, les déplacements des
 particules et les oscillations des flammes. Aucun sélecteur de météo de test
 n'est exposé dans l'interface.
 
-## Rythme de test et développement
+## Rythme de production
 
-Docker Compose fixe actuellement **toutes les actions à 10 secondes** via
-`DEBUG_ACTION_SECONDS=10`. Le calendrier, la croissance et les échéances gardent
-leur rythme normal. Retirer `DEBUG_ACTION_SECONDS` de Compose (ou lui donner
-une valeur vide) restaure les durées normales des actions. L'indicateur de
-développement Next.js est désactivé.
+Docker Compose utilise les durées normales : une minute d'action correspond à
+une minute réelle. La durée totale est calculée à partir du temps de base de
+l'action, de la superficie et du matériel choisi. Dans chaque gamme comparable,
+l'équipement le moins performant applique jusqu'à 15 % de temps supplémentaire
+et le meilleur réduit sa part jusqu'à 20 %. Quand plusieurs machines ou outils
+sont requis, leurs effets se combinent. Le temps de main-d'œuvre facturé suit la
+même réduction.
+
+Le calendrier conserve également son rythme normal : un mois de jeu dure une
+semaine réelle. Les variables `DEBUG_ACTION_SECONDS` et `GAME_MONTH_SECONDS`
+restent disponibles pour des essais ponctuels du backend, mais ne sont pas
+activées par la configuration Docker Compose de production. L'interface et
+l'API d'ajout de fonds de test sont retirées.
+
+## Développement
 
 Pour travailler avec le rechargement automatique : arrêter le frontend Docker
 pour libérer le port 3000, conserver la base et le backend, puis démarrer Next.js :
